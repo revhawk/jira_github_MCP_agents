@@ -1,0 +1,11 @@
+requests
+openai
+python-dotenv
+langgraph
+typing_extensions
+groq
+anthropic
+google-generativeai
+streamlit
+jira
+pytest

@@ -1,0 +1,15 @@
+2025-10-15 14:14:11,014 - INFO - Starting unified generation for CAL with tickets: ['ALL']
+2025-10-15 14:14:11,042 - INFO - Phase: jira_reader
+2025-10-15 14:14:11,255 - INFO - Loaded 0 tickets
+2025-10-15 14:14:11,256 - INFO - Phase: system_architect
+2025-10-15 14:14:11,281 - ERROR - No tickets loaded. Cannot design architecture.
+2025-10-15 14:14:11,282 - INFO - Phase: spec_agent
+2025-10-15 14:14:11,289 - INFO - Phase: spec_reviewer
+2025-10-15 14:14:11,300 - INFO - Phase: generate_tests
+2025-10-15 14:14:11,309 - INFO - Phase: generate_code
+2025-10-15 14:14:11,321 - INFO - Phase: validate_modules
+2025-10-15 14:14:11,321 - INFO - Phase: generate_main_app
+2025-10-15 14:14:33,267 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-15 14:14:33,287 - INFO - Main app written: app.py
+2025-10-15 14:14:33,287 - INFO - Phase: run_tests
+2025-10-15 14:14:33,288 - INFO - Generation complete for CAL
