@@ -1,104 +1,189 @@
-# jira_github_MCP_agents
-Langgraph agents jira github MCP
+# Jira Code Generator
 
-## Running Tests
+AI-powered code generation from Jira tickets using LangGraph workflow with multiple specialized agents.
 
-To run the connection tests, use the following command from the project root:
+## Features
+
+- **Unified App Generation**: Multiple Jira tickets → One cohesive Streamlit application
+- **EPIC Support**: Uses EPIC descriptions as requirements/constraints
+- **Multi-Agent Workflow**: Architecture design, spec extraction, code generation, testing, and validation
+- **Automatic Fixing**: Auto-fixes failing tests and Streamlit app errors
+- **Reference Examples**: Learns from proven working patterns
+- **Cost Optimized**: Uses gpt-4o-mini for most tasks, o1 for architecture decisions
+
+## Quick Start
+
+### 1. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment
+
+Create `.env` file with:
+
+```bash
+# Jira Configuration
+JIRA_BASE=https://your-domain.atlassian.net
+JIRA_EMAIL=your-email@example.com
+JIRA_API_TOKEN=your_jira_api_token
+JIRA_PROJECT_KEY=CAL
+JIRA_BOARD_ID=34
+
+# OpenAI API
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional: Other AI providers
+GROQ_API_KEY=your_groq_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+### 3. Run Code Generation
+
+```bash
+python main.py
+```
+
+Choose mode:
+1. **Single ticket** - Standalone app per ticket
+2. **Bulk import** - Standalone apps for all tickets
+3. **Unified app** - One integrated Streamlit app (recommended)
+
+## Workflow Architecture
+
+### Agents
+
+1. **jira_reader** - Loads tickets and EPIC requirements
+2. **system_architect** (o1) - Designs app structure and modules
+3. **requirements_analyzer** (o1) - Validates architecture simplicity
+4. **spec_agent** (o1) - Extracts function specs from tickets
+5. **spec_reviewer** - Reviews spec completeness
+6. **generate_tests** - Creates pytest tests
+7. **generate_code** - Implements modules
+8. **validate_modules** - Checks function existence
+9. **ui_designer** - Determines optimal UI pattern
+10. **generate_main_app** - Creates Streamlit app
+11. **validate_app** - Checks for Streamlit errors
+12. **fix_app** - Auto-fixes validation errors
+13. **run_tests** - Executes pytest
+14. **test_fixer** - Fixes failing tests (with loop detection)
+
+### Key Features
+
+- **Architecture Validation Loop**: Blocks over-engineered designs (FSM, state machines)
+- **Automatic Test Fixing**: Infinite loop detection prevents getting stuck
+- **Streamlit Validation**: Catches button patterns, session_state conflicts
+- **Reference Examples**: Uses proven working code patterns
+
+## Generated Structure
+
+```
+modules/
+  calculator.py          # Business logic modules
+  validator.py
+  __init__.py
+generated_tests/
+  test_calculator.py     # Pytest tests
+  test_validator.py
+app.py                   # Main Streamlit application
+```
+
+## Running Generated Apps
+
+```bash
+streamlit run app.py
+```
+
+## Testing
+
+### Run Connection Tests
 
 ```bash
 python -m tests.test_connections
 ```
 
-**Notes:**
-- Do not run the test script directly (e.g., `python tests/test_connections.py`), as this may cause import errors.
-- Ensure all required dependencies are installed (see below).
-
-## Installing Dependencies
-## Jira listing configuration
-
-If listing issues returns 410 (Gone), ensure your service account has Jira Software access and Browse Projects permission. Configure:
-
-```
-JIRA_PROJECT_KEY=MFLP
-JIRA_BOARD_ID=1
-```
-
-The app lists via Agile API for the board first, then falls back to JQL search.
-
-
-Before running the tests or main program, install all required dependencies:
+### Run Generated Module Tests
 
 ```bash
-pip install -r requirements.txt
+python -m pytest generated_tests/ -v
 ```
+
+### Run Streamlit UI Tests
+
+```bash
+python -m pytest tests/test_streamlit_app.py -v
+```
+
+## Reference Examples
+
+Add proven working patterns to `reference_examples/streamlit_apps/`:
+
+- `calculator_button_grid.py` - Button grid layout with st.rerun()
+- `sidebar_navigation.py` - Multi-page sidebar navigation
+
+The workflow automatically loads and uses these examples.
+
+## Jira Configuration
+
+### Board ID Setup
+
+For CAL project, board ID is 34. Configure in `.env`:
+
+```bash
+JIRA_PROJECT_KEY=CAL
+JIRA_BOARD_ID=34
+```
+
+The system uses Jira Agile API directly (skips GET/POST that return 410).
+
+### EPIC Requirements
+
+Create an EPIC ticket with description containing:
+- Application requirements
+- Constraints (e.g., "simple", "no complex state management")
+- Architecture preferences
+
+Link all feature tickets to the EPIC.
+
+## Cost Optimization
+
+- **o1 model** ($15/$60 per 1M tokens): Architecture, specs, requirements
+- **gpt-4o-mini** ($0.15/$0.60 per 1M tokens): Code generation, tests, UI, fixes
+- **Estimated cost**: ~$0.50-$2 per unified app generation
 
 ## Troubleshooting
-- If you see `ModuleNotFoundError: No module named 'config'`, make sure you are running the command from the project root and using the `-m` flag as shown above.
-- If you see `No module named 'openai'`, install the OpenAI Python package:
-  ```bash
-  pip install openai
-  ```
 
-## Verifying Generated CAL Tests
+### Module Import Errors
 
-After running the bulk import for the CAL project, you can verify that tests were generated and run them easily.
-
-1. List all generated CAL test files in version order:
-   ```bash
-   ls -1 generated_tests/test_CAL-*.py 2>/dev/null | sort -V || echo "No CAL tests found"
-   ```
-
-2. Run all CAL tests at once:
-   ```bash
-   python -m pytest -q $(ls generated_tests/test_CAL-*.py 2>/dev/null | sort -V)
-   ```
-
-3. Run each CAL test sequentially with headings:
-   ```bash
-   for f in $(ls generated_tests/test_CAL-*.py 2>/dev/null | sort -V); do
-     echo "===== $(basename "$f") =====";
-     python -m pytest -q "$f" || true;
-   done
-   ```
-
-4. Run a single CAL ticket test (example CAL-19):
-   ```bash
-   python -m pytest -q generated_tests/test_CAL-19.py
-   ```
-
-Notes:
-- Always run from the project root so `generated_code/` and `generated_tests/` import correctly.
-- Imports use underscores, e.g., `from generated_code.CAL_19 import some_function`.
-
-## Groq (Qwen) API Access
-
-To enable Groq API access for the Qwen model, add your Groq API key to your `.env` file:
-
-```
-GROQ_API_KEY=your_groq_api_key_here
-```
-
-Install the Groq Python package (already included in requirements.txt):
-
+Run from project root with `-m` flag:
 ```bash
-pip install -r requirements.txt
+python -m tests.test_connections
 ```
 
-The test suite will now check Groq (Qwen) connectivity along with Jira, GitHub, and OpenAI.
+### Streamlit App Not Updating
 
-## Anthropic and Gemini API Access
+- Restart Streamlit server: `Ctrl+C` then `streamlit run app.py`
+- Hard refresh browser: `Ctrl+Shift+R`
+- Check logs in `logs/unified_*.log`
 
-To enable Anthropic and Gemini API access, add your API keys to your `.env` file:
+### Test Failures
 
-```
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-GEMINI_API_KEY=your_gemini_api_key_here
-```
+Check `logs/unified_*.log` for detailed error messages. The workflow auto-fixes tests up to loop detection limit.
 
-Install the required packages (already included in requirements.txt):
+## Examples
 
-```bash
-pip install -r requirements.txt
-```
+See `simple_calculator/` for a complete working example generated from 30 Jira tickets.
 
-The test suite will now check Anthropic and Gemini connectivity along with Jira, GitHub, OpenAI, and Groq (Qwen).
+## Contributing
+
+To add new reference examples:
+1. Create working Streamlit app
+2. Add to `reference_examples/streamlit_apps/`
+3. Include docstring with pattern name and use case
+4. Update `ui_designer` to detect the pattern
+
+## License
+
+MIT
