@@ -1,0 +1,30 @@
+2025-10-15 16:23:30,737 - INFO - Starting unified generation for CAL with tickets: ['ALL']
+2025-10-15 16:23:30,759 - INFO - Phase: jira_reader
+2025-10-15 16:23:30,759 - INFO - Loading all tickets from project CAL
+2025-10-15 16:23:31,793 - INFO - Found 30 tickets in CAL
+2025-10-15 16:23:31,990 - INFO - CAL-1: issue_type = Task
+2025-10-15 16:23:32,171 - INFO - CAL-2: issue_type = Task
+2025-10-15 16:23:32,378 - INFO - CAL-3: issue_type = Task
+2025-10-15 16:23:32,574 - INFO - CAL-4: issue_type = Task
+2025-10-15 16:23:32,756 - INFO - CAL-5: issue_type = Task
+2025-10-15 16:23:32,932 - INFO - CAL-6: issue_type = Task
+2025-10-15 16:23:33,129 - INFO - CAL-7: issue_type = Task
+2025-10-15 16:23:33,301 - INFO - CAL-8: issue_type = Task
+2025-10-15 16:23:33,648 - INFO - CAL-9: issue_type = Task
+2025-10-15 16:23:33,830 - INFO - CAL-10: issue_type = Task
+2025-10-15 16:23:34,003 - INFO - CAL-11: issue_type = Task
+2025-10-15 16:23:34,198 - INFO - CAL-12: issue_type = Task
+2025-10-15 16:23:34,405 - INFO - CAL-13: issue_type = Task
+2025-10-15 16:23:34,600 - INFO - CAL-14: issue_type = Task
+2025-10-15 16:23:34,771 - INFO - CAL-15: issue_type = Task
+2025-10-15 16:23:34,967 - INFO - CAL-16: issue_type = Task
+2025-10-15 16:23:35,251 - INFO - CAL-17: issue_type = Task
+2025-10-15 16:23:35,447 - INFO - CAL-18: issue_type = Task
+2025-10-15 16:23:35,638 - INFO - CAL-19: issue_type = Task
+2025-10-15 16:23:35,816 - INFO - CAL-20: issue_type = Task
+2025-10-15 16:23:36,152 - INFO - CAL-21: issue_type = Task
+2025-10-15 16:23:36,340 - INFO - CAL-22: issue_type = Task
+2025-10-15 16:23:36,514 - INFO - CAL-23: issue_type = Task
+2025-10-15 16:23:36,683 - INFO - CAL-24: issue_type = Task
+2025-10-15 16:23:36,906 - INFO - CAL-25: issue_type = Task
+2025-10-15 16:23:37,098 - INFO - CAL-26: issue_type = Task

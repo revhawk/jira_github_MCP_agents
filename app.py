@@ -1,81 +1,99 @@
 import streamlit as st
-from modules.arithmetic_operations import add, subtract, multiply, divide, negate, percentage_conversion
-from modules.input_processing import process_digit, process_decimal, process_negate, process_percent
-from modules.ui_interaction import process_operator, process_equals, process_clear_entry, process_all_clear, handle_error
-from modules.memory_management import memory_clear, memory_add, memory_subtract, memory_recall
-from modules.app_setup import initialize_app, render_layout, render_display, create_button_grid, bind_digit_buttons, bind_operator_buttons, bind_control_keys, bind_memory_keys, apply_custom_css
+from modules.arithmetic_core import negate, percentage_conversion
 
-def main():
-    st.title('Simple Calculator')
-    
-    # Initialize the app
-    initialize_app()
-    
-    # Sidebar for navigation
-    page = st.sidebar.selectbox('Choose function', ['Arithmetic Operations', 'Memory Management'])
-    
-    if page == 'Arithmetic Operations':
-        st.header('Arithmetic Operations')
-        
-        operation = st.selectbox('Select Operation', ['Add', 'Subtract', 'Multiply', 'Divide', 'Negate', 'Percentage Conversion'])
-        
-        if operation in ['Add', 'Subtract', 'Multiply', 'Divide']:
-            a = st.number_input('First number', value=0.0, key='num_a')
-            b = st.number_input('Second number', value=0.0, key='num_b')
-            
-            if st.button('Calculate', key='calc_btn'):
-                if operation == 'Add':
-                    result = add(a, b)
-                elif operation == 'Subtract':
-                    result = subtract(a, b)
-                elif operation == 'Multiply':
-                    result = multiply(a, b)
-                elif operation == 'Divide':
-                    try:
-                        result = divide(a, b)
-                    except ZeroDivisionError:
-                        st.error("Cannot divide by zero.")
-                
-                st.success(f'Result: {result}')
-        
-        elif operation == 'Negate':
-            n = st.number_input('Number to Negate', value=0.0, key='num_negate')
-            if st.button('Negate', key='negate_btn'):
-                result = negate(n)
-                st.success(f'Result: {result}')
-        
-        elif operation == 'Percentage Conversion':
-            n = st.number_input('Number for Percentage Conversion', value=0.0, key='num_percent')
-            if st.button('Convert', key='percent_btn'):
-                result = percentage_conversion(n)
-                st.success(f'Result: {result}')
-    
-    elif page == 'Memory Management':
-        st.header('Memory Management')
-        
-        memory_value = st.session_state.get('memory_value', 0.0)
-        st.write(f'Current Memory Value: {memory_value}')
-        
-        if st.button('Memory Clear', key='mem_clear_btn'):
-            memory_clear()
-            st.session_state['memory_value'] = 0.0
-            st.success('Memory cleared.')
-        
-        value_to_memory = st.number_input('Value to Add/Subtract to Memory', value=0.0, key='mem_value')
-        
-        if st.button('Memory Add', key='mem_add_btn'):
-            memory_add(value_to_memory)
-            st.session_state['memory_value'] += value_to_memory
-            st.success(f'Added {value_to_memory} to memory.')
-        
-        if st.button('Memory Subtract', key='mem_subtract_btn'):
-            memory_subtract(value_to_memory)
-            st.session_state['memory_value'] -= value_to_memory
-            st.success(f'Subtracted {value_to_memory} from memory.')
-        
-        if st.button('Memory Recall', key='mem_recall_btn'):
-            recalled_value = memory_recall()
-            st.success(f'Recalled Memory Value: {recalled_value}')
+st.set_page_config(page_title="Calculator", layout="centered")
 
-if __name__ == '__main__':
-    main()
+# Initialize
+if 'display' not in st.session_state:
+    st.session_state.display = '0'
+
+st.title('🔢 Simple Calculator')
+
+# Display (shows current state)
+st.markdown(f"### Display: `{st.session_state.display}`")
+
+# Button grid
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    if st.button('7', key='7', use_container_width=True):
+        st.session_state.display = '7' if st.session_state.display == '0' else st.session_state.display + '7'
+        st.rerun()
+    if st.button('4', key='4', use_container_width=True):
+        st.session_state.display = '4' if st.session_state.display == '0' else st.session_state.display + '4'
+        st.rerun()
+    if st.button('1', key='1', use_container_width=True):
+        st.session_state.display = '1' if st.session_state.display == '0' else st.session_state.display + '1'
+        st.rerun()
+    if st.button('0', key='0', use_container_width=True):
+        if st.session_state.display != '0':
+            st.session_state.display += '0'
+        st.rerun()
+
+with col2:
+    if st.button('8', key='8', use_container_width=True):
+        st.session_state.display = '8' if st.session_state.display == '0' else st.session_state.display + '8'
+        st.rerun()
+    if st.button('5', key='5', use_container_width=True):
+        st.session_state.display = '5' if st.session_state.display == '0' else st.session_state.display + '5'
+        st.rerun()
+    if st.button('2', key='2', use_container_width=True):
+        st.session_state.display = '2' if st.session_state.display == '0' else st.session_state.display + '2'
+        st.rerun()
+    if st.button('.', key='.', use_container_width=True):
+        if '.' not in st.session_state.display:
+            st.session_state.display += '.'
+            st.rerun()
+
+with col3:
+    if st.button('9', key='9', use_container_width=True):
+        st.session_state.display = '9' if st.session_state.display == '0' else st.session_state.display + '9'
+        st.rerun()
+    if st.button('6', key='6', use_container_width=True):
+        st.session_state.display = '6' if st.session_state.display == '0' else st.session_state.display + '6'
+        st.rerun()
+    if st.button('3', key='3', use_container_width=True):
+        st.session_state.display = '3' if st.session_state.display == '0' else st.session_state.display + '3'
+        st.rerun()
+    if st.button('=', key='=', use_container_width=True):
+        try:
+            st.session_state.display = str(eval(st.session_state.display))
+        except:
+            st.session_state.display = 'Error'
+        st.rerun()
+
+with col4:
+    if st.button('➕', key='+', use_container_width=True):
+        st.session_state.display += '+'
+        st.rerun()
+    if st.button('➖', key='-', use_container_width=True):
+        st.session_state.display += '-'
+        st.rerun()
+    if st.button('✖️', key='*', use_container_width=True):
+        st.session_state.display += '*'
+        st.rerun()
+    if st.button('➗', key='/', use_container_width=True):
+        st.session_state.display += '/'
+        st.rerun()
+
+# Additional operations
+st.divider()
+col_c, col_neg, col_pct = st.columns(3)
+with col_c:
+    if st.button('Clear', key='C', use_container_width=True):
+        st.session_state.display = '0'
+        st.rerun()
+with col_neg:
+    if st.button('± Negate', key='neg', use_container_width=True):
+        try:
+            st.session_state.display = str(negate(float(st.session_state.display)))
+        except:
+            st.session_state.display = 'Error'
+        st.rerun()
+with col_pct:
+    if st.button('% Percent', key='pct', use_container_width=True):
+        try:
+            st.session_state.display = str(percentage_conversion(float(st.session_state.display)))
+        except:
+            st.session_state.display = 'Error'
+        st.rerun()

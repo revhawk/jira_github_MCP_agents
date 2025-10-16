@@ -1,4 +1,5 @@
 import requests
+import time
 from requests.auth import HTTPBasicAuth
 from typing import Dict, Any
 
@@ -31,7 +32,16 @@ def read_issue(issue_key: str) -> Dict[str, Any]:
     auth = HTTPBasicAuth(Settings.JIRA_EMAIL, Settings.JIRA_API_TOKEN)
     headers = {"Accept": "application/json"}
     params = {"fields": "summary,description,issuetype"}
-    response = requests.get(url, headers=headers, params=params, auth=auth, timeout=15)
+    
+    for attempt in range(3):
+        try:
+            response = requests.get(url, headers=headers, params=params, auth=auth, timeout=30)
+            break
+        except requests.exceptions.Timeout:
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
+            continue
     if response.status_code == 200:
         data = response.json()
         fields = data.get("fields", {})
@@ -113,33 +123,11 @@ def list_all_issues_in_project(project_key: str, max_results: int = 100) -> Dict
     }
 
     try:
-        print(f"🔍 Trying GET search for project {project_key}...")
-        response = requests.get(url, params=params, headers=headers, auth=auth, timeout=20)
-        print(f"   GET response: {response.status_code}")
-        if response.status_code == 200:
-            data = response.json()
-            return {"issues": data.get("issues", [])}
-        # Fallback to POST if GET not accepted
-        if response.status_code in (400, 405, 410):
-            print(f"   GET failed ({response.status_code}), trying POST...")
-            payload = {
-                "jql": params["jql"],
-                "maxResults": max_results,
-                "fields": ["summary", "description"],
-            }
-            post_resp = requests.post(url, json=payload, headers=headers, auth=auth, timeout=20)
-            print(f"   POST response: {post_resp.status_code}")
-            if post_resp.status_code == 200:
-                data = post_resp.json()
-                return {"issues": data.get("issues", [])}
-            print(f"   POST failed ({post_resp.status_code}), trying Agile API...")
-        # Fallback 2: Use Jira Agile API by board to list issues
-        # Try multiple board IDs since different projects may use different boards
-        # CAL project uses board 34, MFLP uses board 1
+        # Use Jira Agile API directly (GET/POST search returns 410)
         if project_key == "CAL":
-            board_ids_to_try = [34, Settings.JIRA_BOARD_ID, 1, 2, 3]
+            board_ids_to_try = [34]
         else:
-            board_ids_to_try = [Settings.JIRA_BOARD_ID, 34, 1, 2, 3]
+            board_ids_to_try = [Settings.JIRA_BOARD_ID]
         for board_id in board_ids_to_try:
             agile_url = f"{Settings.JIRA_BASE}/rest/agile/1.0/board/{board_id}/issue"
             agile_params = {"maxResults": str(max_results)}
@@ -159,11 +147,7 @@ def list_all_issues_in_project(project_key: str, max_results: int = 100) -> Dict
             except requests.RequestException as e:
                 print(f"   Board {board_id} failed: {e}")
                 continue
-        return {
-            "issues": [],
-            "error": f"Jira search returned {response.status_code}; agile returned {agile_resp.status_code}",
-            "details": f"search: {response.text}\nagile: {agile_resp.text}",
-        }
+        return {"issues": [], "error": "No issues found via Agile API"}
     except requests.RequestException as e:
         return {"issues": [], "error": "request_exception", "details": str(e)}
 

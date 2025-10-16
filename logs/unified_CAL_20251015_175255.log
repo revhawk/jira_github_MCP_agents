@@ -1,0 +1,37 @@
+2025-10-15 17:52:55,659 - INFO - Starting unified generation for CAL with tickets: ['CAL-1', 'CAL-2', 'CAL-3', 'CAL-4', 'CAL-5', 'CAL-6', 'CAL-7', 'CAL-8', 'CAL-9', 'CAL-10', 'CAL-11', 'CAL-12', 'CAL-13', 'CAL-14', 'CAL-15', 'CAL-16', 'CAL-17', 'CAL-18', 'CAL-19', 'CAL-20', 'CAL-21', 'CAL-22', 'CAL-23', 'CAL-24', 'CAL-25', 'CAL-26', 'CAL-27', 'CAL-28', 'CAL-29', 'CAL-30']
+2025-10-15 17:52:55,691 - INFO - Phase: jira_reader
+2025-10-15 17:52:55,888 - INFO - CAL-1: issue_type = Task
+2025-10-15 17:52:56,197 - INFO - CAL-2: issue_type = Task
+2025-10-15 17:52:56,399 - INFO - CAL-3: issue_type = Task
+2025-10-15 17:52:56,674 - INFO - CAL-4: issue_type = Task
+2025-10-15 17:52:56,868 - INFO - CAL-5: issue_type = Task
+2025-10-15 17:52:57,119 - INFO - CAL-6: issue_type = Task
+2025-10-15 17:52:57,294 - INFO - CAL-7: issue_type = Task
+2025-10-15 17:52:57,463 - INFO - CAL-8: issue_type = Task
+2025-10-15 17:52:57,657 - INFO - CAL-9: issue_type = Task
+2025-10-15 17:52:57,827 - INFO - CAL-10: issue_type = Task
+2025-10-15 17:52:58,007 - INFO - CAL-11: issue_type = Task
+2025-10-15 17:52:58,190 - INFO - CAL-12: issue_type = Task
+2025-10-15 17:52:58,371 - INFO - CAL-13: issue_type = Task
+2025-10-15 17:52:58,543 - INFO - CAL-14: issue_type = Task
+2025-10-15 17:52:58,710 - INFO - CAL-15: issue_type = Task
+2025-10-15 17:52:58,879 - INFO - CAL-16: issue_type = Task
+2025-10-15 17:52:59,168 - INFO - CAL-17: issue_type = Task
+2025-10-15 17:52:59,340 - INFO - CAL-18: issue_type = Task
+2025-10-15 17:52:59,555 - INFO - CAL-19: issue_type = Task
+2025-10-15 17:52:59,740 - INFO - CAL-20: issue_type = Task
+2025-10-15 17:52:59,936 - INFO - CAL-21: issue_type = Task
+2025-10-15 17:53:00,146 - INFO - CAL-22: issue_type = Task
+2025-10-15 17:53:00,338 - INFO - CAL-23: issue_type = Task
+2025-10-15 17:53:00,518 - INFO - CAL-24: issue_type = Task
+2025-10-15 17:53:00,805 - INFO - CAL-25: issue_type = Task
+2025-10-15 17:53:00,995 - INFO - CAL-26: issue_type = Task
+2025-10-15 17:53:01,202 - INFO - CAL-27: issue_type = Task
+2025-10-15 17:53:01,404 - INFO - CAL-28: issue_type = Task
+2025-10-15 17:53:01,601 - INFO - CAL-29: issue_type = Task
+2025-10-15 17:53:01,785 - INFO - CAL-30: issue_type = Epic
+2025-10-15 17:53:01,785 - INFO - Found EPIC: CAL-30 with description length: 4398
+2025-10-15 17:53:01,785 - INFO - Loaded 29 tickets and EPIC description
+2025-10-15 17:53:01,786 - INFO - Phase: system_architect
+2025-10-15 17:53:01,809 - INFO - Using EPIC description for application goal
+2025-10-15 17:53:02,243 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 400 Bad Request"

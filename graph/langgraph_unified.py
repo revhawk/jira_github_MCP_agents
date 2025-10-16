@@ -35,14 +35,22 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         tickets: list  # [{key, title, description}]
         epic_description: str
         architecture_plan: str
+        architecture_approved: bool
         modules: dict  # {module_name: {tickets: [], functions: []}}
         specs: dict  # {module_name: spec_json}
         test_files: dict  # {module_name: path}
         code_files: dict  # {module_name: path}
+        ui_design: str
+        ui_pattern: str
         app_path: str
         test_results: dict
         passed: int
         failed: int
+        fix_iteration: int
+        prev_failures: dict
+        app_errors: list
+        app_fix_iteration: int
+        stuck: bool
 
     def log_phase(phase: str):
         logger.info(f"Phase: {phase}")
@@ -117,7 +125,7 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             )
             
             goal_resp = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[{"role": "user", "content": app_goal_prompt}],
                 temperature=0.2,
                 top_p=0.95,
@@ -169,14 +177,11 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             prompt += f"\n{t['key']}: {t['title']}\n{t['description'][:200]}\n"
         
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="o1",
             messages=[
-                {"role": "system", "content": "You are a software architect. Output only valid JSON."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": "Output ONLY valid JSON. No markdown, no explanations.\n\n" + prompt}
             ],
-            temperature=0.2,
-            top_p=0.95,
-            max_tokens=2000,
+            max_completion_tokens=4000,
         )
         
         arch_plan = resp.choices[0].message.content.strip()
@@ -198,6 +203,61 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         
         return {"architecture_plan": arch_plan, "modules": modules}
 
+    def requirements_analyzer(state: GenState) -> GenState:
+        """Analyze EPIC requirements and ensure architecture stays simple and focused."""
+        log_phase("requirements_analyzer")
+        epic_description = state.get("epic_description", "")
+        architecture_plan = state.get("architecture_plan", "")
+        modules = state.get("modules", {})
+        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
+        
+        if not epic_description:
+            logger.info("No EPIC description - skipping requirements analysis")
+            return {}
+        
+        prompt = (
+            "Analyze EPIC requirements and REJECT over-engineering.\n\n"
+            "CRITICAL RULES:\n"
+            "- If EPIC says 'simple' or 'basic', REJECT any FSM, state machines, complex patterns\n"
+            "- If EPIC says 'no complex state management', REJECT state classes, FSM, observers\n"
+            "- Calculator = simple functions (add, subtract, etc.), NOT state machines\n"
+            "- Prefer direct implementations over abstractions\n\n"
+            "TASK:\n"
+            "1. Extract constraints from EPIC\n"
+            "2. Check for BANNED patterns: FSM, state machines, observers, factories, strategies\n"
+            "3. Verify architecture matches EPIC simplicity level\n\n"
+            "OUTPUT FORMAT:\n"
+            "CONSTRAINTS: [key constraints]\n"
+            "BANNED_PATTERNS_FOUND: [FSM/state machine/etc or 'None']\n"
+            "SIMPLICITY_LEVEL: [too complex/appropriate/too simple]\n"
+            "APPROVED: [YES or NO]\n\n"
+            f"EPIC REQUIREMENTS:\n{epic_description}\n\n"
+            f"PROPOSED ARCHITECTURE:\n{architecture_plan}\n\n"
+            f"MODULES: {list(modules.keys())}\n"
+        )
+        
+        resp = client.chat.completions.create(
+            model="o1",
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=2000,
+        )
+        
+        analysis = resp.choices[0].message.content
+        logger.info(f"Requirements analysis:\n{analysis}")
+        
+        # Check o1's decision
+        approved = 'APPROVED: YES' in analysis or 'APPROVED: [YES]' in analysis
+        
+        if approved:
+            print("✅ Requirements check: APPROVED")
+        else:
+            print("❌ Requirements check: REJECTED - will regenerate simpler architecture")
+            # Log what was found
+            if 'FSM' in analysis.upper():
+                logger.warning("Rejected due to FSM pattern")
+        
+        return {"architecture_approved": approved}
+
     def spec_agent(state: GenState) -> GenState:
         log_phase("spec_agent")
         tickets = state.get("tickets", [])
@@ -211,7 +271,19 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             tickets_text = "\n".join([f"{t['key']}: {t['title']}\n{t['description']}" for t in module_tickets])
             
             prompt = (
-                "Extract implementation spec for this module.\n\n"
+                "Extract implementation spec by analyzing tickets.\n\n"
+                "STEP-BY-STEP:\n"
+                "1. Read each ticket title and description\n"
+                "2. Identify what function(s) it needs\n"
+                "3. Determine inputs/outputs from requirements\n"
+                "4. List edge cases\n\n"
+                "EXAMPLE TICKET ANALYSIS:\n"
+                "Ticket CAL-1: 'Addition operation'\n"
+                "Description: 'Add two numbers and return result'\n"
+                "→ Function: {\"name\": \"add\", \"inputs\": [\"a: float\", \"b: float\"], \"output\": \"float\"}\n\n"
+                "Ticket CAL-17: 'Memory clear'\n"
+                "Description: 'Clear calculator memory'\n"
+                "→ Function: {\"name\": \"memory_clear\", \"inputs\": [], \"output\": \"None\"}\n\n"
                 "EXAMPLE OUTPUT:\n"
                 "{\n"
                 '  "module": "calculator",\n'
@@ -225,22 +297,20 @@ def run_unified_graph(project_key: str, ticket_keys: list):
                 "}\n\n"
                 "REQUIREMENTS:\n"
                 "- Return valid JSON\n"
-                "- Define clear function signatures\n"
-                "- List edge cases and acceptance criteria\n\n"
+                "- Extract functions from EVERY ticket\n"
+                "- Simple, direct functions (NO classes, NO state machines)\n"
+                "- Define clear function signatures\n\n"
                 f"MODULE: {module_name}\n"
                 f"PURPOSE: {module_info['purpose']}\n"
                 f"TICKETS:\n{tickets_text}\n"
             )
             
             resp = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="o1",
                 messages=[
-                    {"role": "system", "content": "Output only valid JSON."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": "You are a spec writer. Output only valid JSON.\n\n" + prompt}
                 ],
-                temperature=0.2,
-                top_p=0.95,
-                max_tokens=1500,
+                max_completion_tokens=3000,
             )
             
             spec = resp.choices[0].message.content.strip()
@@ -271,7 +341,7 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             )
             
             resp = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 top_p=0.95,
@@ -307,7 +377,8 @@ def run_unified_graph(project_key: str, ticket_keys: list):
                 "```\n\n"
                 "REQUIREMENTS:\n"
                 f"- Import from modules.{module_name}\n"
-                "- Test all functions in spec\n"
+                "- Test ONLY business logic functions (not UI components)\n"
+                "- Do NOT test Streamlit UI functions\n"
                 "- Cover normal, edge, and error cases\n"
                 "- 2-7 tests per function\n"
                 "- Use pytest.approx() for floats\n\n"
@@ -316,7 +387,7 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             )
             
             resp = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "Output only valid Python test code."},
                     {"role": "user", "content": prompt}
@@ -389,7 +460,7 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             )
             
             resp = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "Output only valid Python code."},
                     {"role": "user", "content": prompt}
@@ -450,12 +521,81 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         
         return {}
 
+    def ui_designer(state: GenState) -> GenState:
+        """Analyze functions and design optimal UI layout."""
+        log_phase("ui_designer")
+        code_files = state.get("code_files", {})
+        specs = state.get("specs", {})
+        epic_description = state.get("epic_description", "")
+        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
+        
+        # Read actual functions
+        actual_functions = {}
+        for module_name, code_path in code_files.items():
+            if os.path.exists(code_path):
+                with open(code_path, "r") as f:
+                    code_content = f.read()
+                import re
+                funcs = re.findall(r'^def (\w+)\(', code_content, re.MULTILINE)
+                actual_functions[module_name] = funcs
+        
+        functions_list = "\n".join([f"{mod}: {', '.join(funcs)}" for mod, funcs in actual_functions.items()])
+        specs_text = "\n".join([f"{name}:\n{spec}" for name, spec in specs.items()])
+        
+        prompt = (
+            "Design optimal Streamlit UI layout based on available functions.\n\n"
+            "ANALYZE:\n"
+            "1. Function types (math operations, data processing, utilities)\n"
+            "2. Input patterns (numbers, text, files)\n"
+            "3. Best UI pattern (button grid, sidebar nav, tabs, forms)\n\n"
+            "EXAMPLES:\n"
+            "- Calculator with add/subtract/multiply/divide → Button grid layout (like traditional calculator)\n"
+            "- Data processing with multiple tools → Sidebar navigation\n"
+            "- Single workflow → Vertical form layout\n\n"
+            "OUTPUT FORMAT:\n"
+            "UI_PATTERN: [button_grid | sidebar_nav | tabs | form]\n"
+            "LAYOUT: [description of layout]\n"
+            "REASONING: [why this pattern fits]\n\n"
+            f"EPIC CONTEXT:\n{epic_description}\n\n"
+            f"AVAILABLE FUNCTIONS:\n{functions_list}\n\n"
+            f"SPECS:\n{specs_text}\n"
+        )
+        
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            top_p=0.95,
+            max_tokens=600,
+        )
+        
+        ui_design = resp.choices[0].message.content
+        logger.info(f"UI design:\n{ui_design}")
+        
+        # Extract UI pattern
+        ui_pattern = "sidebar_nav"  # default
+        if "button_grid" in ui_design.lower():
+            ui_pattern = "button_grid"
+            print("🎨 UI: Button grid layout (calculator style)")
+        elif "tabs" in ui_design.lower():
+            ui_pattern = "tabs"
+            print("🎨 UI: Tabbed layout")
+        elif "form" in ui_design.lower():
+            ui_pattern = "form"
+            print("🎨 UI: Form layout")
+        else:
+            print("🎨 UI: Sidebar navigation")
+        
+        return {"ui_design": ui_design, "ui_pattern": ui_pattern}
+
     def generate_main_app(state: GenState) -> GenState:
         log_phase("generate_main_app")
         architecture_plan = state.get("architecture_plan", "")
         modules = state.get("modules", {})
         specs = state.get("specs", {})
         code_files = state.get("code_files", {})
+        ui_design = state.get("ui_design", "")
+        ui_pattern = state.get("ui_pattern", "sidebar_nav")
         client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         # Read actual module code to get real function names
@@ -478,42 +618,50 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         
         specs_text = "\n".join([f"{name}:\n{spec}" for name, spec in specs.items()])
         
+        # Load reference examples from files
+        example_file = f"reference_examples/streamlit_apps/{ui_pattern}.py"
+        if ui_pattern == "button_grid":
+            example_file = "reference_examples/streamlit_apps/calculator_button_grid.py"
+        elif ui_pattern == "sidebar_nav":
+            example_file = "reference_examples/streamlit_apps/sidebar_navigation.py"
+        
+        if os.path.exists(example_file):
+            with open(example_file, 'r') as f:
+                example = f"REFERENCE EXAMPLE (proven working pattern):\n```python\n{f.read()}\n```\n"
+        else:
+            example = "No reference example available for this pattern.\n"
+        else:
+            example = (
+                "```python\n"
+                "import streamlit as st\n"
+                "from modules.calculator import add, subtract\n\n"
+                "def main():\n"
+                "    st.title('Calculator App')\n"
+                "    page = st.sidebar.selectbox('Choose function', ['Add', 'Subtract'])\n"
+                "    if page == 'Add':\n"
+                "        a = st.number_input('First number', value=0.0)\n"
+                "        b = st.number_input('Second number', value=0.0)\n"
+                "        if st.button('Calculate'):\n"
+                "            st.success(f'Result: {add(a, b)}')\n\n"
+                "if __name__ == '__main__':\n"
+                "    main()\n"
+                "```\n"
+            )
+        
         prompt = (
             "Create main Streamlit app that integrates all modules.\n\n"
-            "EXAMPLE:\n"
-            "```python\n"
-            '"""Main Streamlit Application"""\n'
-            "import streamlit as st\n"
-            "from modules.calculator import add, subtract\n\n"
-            "def main():\n"
-            "    st.title('Calculator App')\n"
-            "    \n"
-            "    page = st.sidebar.selectbox('Choose function', ['Add', 'Subtract'])\n"
-            "    \n"
-            "    if page == 'Add':\n"
-            "        st.header('Addition')\n"
-            "        a = st.number_input('First number', value=0.0)\n"
-            "        b = st.number_input('Second number', value=0.0)\n"
-            "        if st.button('Calculate'):\n"
-            "            result = add(a, b)\n"
-            "            st.success(f'Result: {result}')\n"
-            "    \n"
-            "    elif page == 'Subtract':\n"
-            "        st.header('Subtraction')\n"
-            "        a = st.number_input('First number', value=0.0, key='sub_a')\n"
-            "        b = st.number_input('Second number', value=0.0, key='sub_b')\n"
-            "        if st.button('Calculate', key='sub_btn'):\n"
-            "            result = subtract(a, b)\n"
-            "            st.success(f'Result: {result}')\n\n"
-            "if __name__ == '__main__':\n"
-            "    main()\n"
-            "```\n\n"
+            f"EXAMPLE ({ui_pattern}):\n{example}\n"
+            "CRITICAL STREAMLIT RULES:\n"
+            "- After updating st.session_state, call st.rerun() to refresh display immediately\n"
+            "- Use st.markdown() to display session_state values, NOT disabled text_input\n"
+            "- Pattern: if st.button('X'): st.session_state.val = 'X'; st.rerun()\n\n"
             "REQUIREMENTS:\n"
             "- Import ONLY functions that actually exist in modules\n"
-            "- Use st.sidebar for navigation\n"
-            "- Create UI for each function\n"
+            f"- Use {ui_pattern} layout pattern\n"
+            "- Create intuitive UI for each function\n"
             "- Use unique keys for widgets\n"
-            "- Professional layout\n\n"
+            "- Professional, clean design\n\n"
+            f"UI DESIGN GUIDANCE:\n{ui_design}\n\n"
             f"ARCHITECTURE:\n{architecture_plan}\n\n"
             f"MODULES:\n{modules_list}\n\n"
             f"ACTUAL FUNCTIONS (use these exact names):\n{functions_text}\n\n"
@@ -524,10 +672,10 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Output only valid Python code."},
+                {"role": "system", "content": "Output only valid Python code. Follow the reference example pattern exactly."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3,
+            temperature=0.2,
             top_p=0.9,
             max_tokens=4000,
         )
@@ -563,29 +711,290 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             total_failed += res.get("failed", 0)
             logger.info(f"{module_name}: {res.get('passed', 0)} passed, {res.get('failed', 0)} failed")
         
-        return {"test_results": test_results, "passed": total_passed, "failed": total_failed}
+        iteration = state.get("fix_iteration", 0)
+        return {"test_results": test_results, "passed": total_passed, "failed": total_failed, "fix_iteration": iteration}
+
+    def test_fixer(state: GenState) -> GenState:
+        """Fix failing tests by analyzing errors and regenerating code."""
+        log_phase("test_fixer")
+        test_results = state.get("test_results", {})
+        code_files = state.get("code_files", {})
+        test_files = state.get("test_files", {})
+        specs = state.get("specs", {})
+        iteration = state.get("fix_iteration", 0)
+        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
+        
+        print(f"🔧 Fix iteration {iteration + 1}")
+        
+        # Check for infinite loop (same failures)
+        current_failures = {mod: res.get("failed", 0) for mod, res in test_results.items()}
+        prev_failures = state.get("prev_failures", {})
+        
+        if iteration > 0 and prev_failures == current_failures:
+            logger.warning(f"Same failures after {iteration} iterations - stopping test fixes")
+            print(f"⚠️  Stuck on same failures - accepting current state")
+            return {"fix_iteration": iteration + 1, "prev_failures": current_failures, "stuck": True}
+        
+        failed_modules = [mod for mod, res in test_results.items() if res.get("failed", 0) > 0]
+        
+        for module_name in failed_modules:
+            code_path = code_files.get(module_name, "")
+            test_path = test_files.get(module_name, "")
+            
+            if not code_path or not test_path:
+                continue
+            
+            with open(code_path, "r") as f:
+                current_code = f.read()
+            with open(test_path, "r") as f:
+                tests_src = f.read()
+            
+            test_output = test_results[module_name].get("output", "")
+            
+            prompt = (
+                "Fix code to pass all tests.\n\n"
+                "REQUIREMENTS:\n"
+                "- Keep function signatures unchanged\n"
+                "- Fix logic errors\n"
+                "- Handle edge cases\n"
+                "- Pass ALL tests\n\n"
+                f"SPEC:\n{specs.get(module_name, '')}\n\n"
+                f"CURRENT CODE:\n{current_code}\n\n"
+                f"TESTS:\n{tests_src}\n\n"
+                f"TEST FAILURES:\n{test_output}\n\n"
+                "OUTPUT: Only fixed Python code, no markdown.\n"
+            )
+            
+            resp = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Output only valid Python code."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                top_p=0.9,
+                max_tokens=4000,
+            )
+            
+            fixed_code = resp.choices[0].message.content.strip()
+            import re
+            fixed_code = re.sub(r'^```python\s*', '', fixed_code)
+            fixed_code = re.sub(r'```\s*$', '', fixed_code)
+            
+            try:
+                ast.parse(fixed_code)
+                write_files([{"path": code_path, "content": fixed_code}])
+                logger.info(f"Fixed {module_name}")
+            except SyntaxError:
+                logger.error(f"Failed to fix {module_name}")
+        
+        return {"fix_iteration": iteration + 1, "prev_failures": current_failures}
+
+    def should_fix_tests(state: GenState) -> str:
+        stuck = state.get("stuck", False)
+        failed = state.get("failed", 0)
+        
+        if stuck:
+            return "end"
+        if failed > 0:
+            return "fix"
+        return "end"
+
+    def validate_app(state: GenState) -> GenState:
+        """Validate Streamlit app by checking for common errors."""
+        log_phase("validate_app")
+        app_path = state.get("app_path", "app.py")
+        
+        if not os.path.exists(app_path):
+            return {"app_errors": ["App file not found"]}
+        
+        with open(app_path, "r") as f:
+            app_code = f.read()
+        
+        errors = []
+        
+        # Check for syntax errors
+        try:
+            ast.parse(app_code)
+        except SyntaxError as e:
+            errors.append(f"Syntax error: {e}")
+        
+        # Check for common Streamlit button issues
+        if 'on_click=lambda' in app_code:
+            errors.append("Buttons use 'on_click=lambda' pattern which doesn't work. Use 'if st.button():' pattern instead.")
+        
+        # Check if buttons update session_state but don't call st.rerun()
+        if 'st.session_state' in app_code and 'if st.button(' in app_code:
+            # Count button blocks that update session_state
+            button_blocks = app_code.count('if st.button(')
+            rerun_calls = app_code.count('st.rerun()')
+            if rerun_calls == 0:
+                errors.append("Buttons update session_state but don't call st.rerun(). Add st.rerun() after state updates for immediate display refresh.")
+        
+        # Check for disabled text_input used as display (doesn't update properly)
+        if 'disabled=True' in app_code and 'st.session_state' in app_code:
+            errors.append("Using disabled text_input for display. Use st.markdown() or st.text() instead for proper state updates.")
+        
+        # Check for session_state assignment conflict with widget keys
+        import re
+        # Find patterns like: st.session_state.X = st.widget(..., key='X')
+        widget_pattern = r"st\.session_state\.(\w+)\s*=\s*st\.\w+\([^)]*key=['\"]\1['\"]"  
+        conflicts = re.findall(widget_pattern, app_code)
+        if conflicts:
+            errors.append(f"Cannot assign to st.session_state.{conflicts[0]} when widget uses key='{conflicts[0]}'. Remove the assignment.")
+        
+        # Check imports match available modules
+        imports = re.findall(r'from modules\.(\w+) import', app_code)
+        code_files = state.get("code_files", {})
+        for imp in imports:
+            if imp not in code_files:
+                errors.append(f"Import error: modules.{imp} doesn't exist. Available: {list(code_files.keys())}")
+        
+        # Run automated UI tests if they exist
+        ui_test_path = "tests/test_streamlit_app.py"
+        if os.path.exists(ui_test_path):
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ['python', '-m', 'pytest', ui_test_path, '-v', '--tb=short'],
+                    capture_output=True, text=True, timeout=10, cwd=os.getcwd()
+                )
+                if result.returncode != 0:
+                    failures = [line for line in result.stdout.split('\n') if 'FAILED' in line or 'AssertionError' in line]
+                    if failures:
+                        errors.append(f"UI tests failed: {'; '.join(failures[:3])}")
+                    logger.warning(f"UI test output:\n{result.stdout}")
+                else:
+                    logger.info("UI tests passed")
+            except Exception as e:
+                logger.warning(f"UI test execution failed: {e}")
+        
+        logger.info(f"App validation: {len(errors)} errors found")
+        if errors:
+            for err in errors:
+                logger.warning(f"  - {err}")
+        
+        return {"app_errors": errors, "app_fix_iteration": 0}
+
+    def fix_app(state: GenState) -> GenState:
+        """Fix Streamlit app based on validation errors."""
+        log_phase("fix_app")
+        app_errors = state.get("app_errors", [])
+        app_path = state.get("app_path", "app.py")
+        code_files = state.get("code_files", {})
+        specs = state.get("specs", {})
+        iteration = state.get("app_fix_iteration", 0)
+        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
+        
+        print(f"🔧 Fixing app (iteration {iteration + 1}/2)")
+        
+        with open(app_path, "r") as f:
+            current_app = f.read()
+        
+        # Get actual functions
+        actual_functions = {}
+        for module_name, code_path in code_files.items():
+            if os.path.exists(code_path):
+                with open(code_path, "r") as f:
+                    code_content = f.read()
+                import re
+                funcs = re.findall(r'^def (\w+)\(', code_content, re.MULTILINE)
+                actual_functions[module_name] = funcs
+        
+        functions_text = "\n".join([f"modules.{mod}: {', '.join(funcs)}" for mod, funcs in actual_functions.items()])
+        errors_text = "\n".join([f"- {err}" for err in app_errors])
+        
+        prompt = (
+            "Fix the Streamlit app based on errors.\n\n"
+            "CRITICAL STREAMLIT RULES:\n"
+            "1. ALWAYS call st.rerun() after updating st.session_state in button handlers\n"
+            "   CORRECT: if st.button('7'): st.session_state.display += '7'; st.rerun()\n"
+            "   WRONG: if st.button('7'): st.session_state.display += '7'  # Missing st.rerun()\n"
+            "2. Display session_state with st.markdown(), NEVER disabled text_input\n"
+            "   CORRECT: st.markdown(f'Display: `{st.session_state.display}`')\n"
+            "   WRONG: st.text_input('Display', value=st.session_state.display, disabled=True)\n"
+            "3. Use use_container_width=True on buttons for better layout\n"
+            "4. Widget keys: NEVER assign to st.session_state.X when widget has key='X'\n"
+            "5. Import only modules that exist\n\n"
+            f"ERRORS TO FIX:\n{errors_text}\n\n"
+            f"AVAILABLE MODULES:\n{functions_text}\n\n"
+            f"CURRENT APP:\n{current_app}\n\n"
+            "OUTPUT: Only fixed Python code, no markdown.\n"
+        )
+        
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Output only valid Python code. Follow Streamlit rules exactly."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=4000,
+        )
+        
+        fixed_app = resp.choices[0].message.content.strip()
+        import re
+        fixed_app = re.sub(r'^```python\s*', '', fixed_app)
+        fixed_app = re.sub(r'```\s*$', '', fixed_app)
+        
+        try:
+            ast.parse(fixed_app)
+            write_files([{"path": app_path, "content": fixed_app}])
+            logger.info("App fixed successfully")
+        except SyntaxError:
+            logger.error("Failed to fix app - syntax error")
+        
+        return {"app_fix_iteration": iteration + 1}
+
+    def should_fix_app(state: GenState) -> str:
+        errors = state.get("app_errors", [])
+        
+        if len(errors) > 0:
+            return "fix_app"
+        return "run_tests"
 
     # Build graph
     builder = StateGraph(GenState)
     builder.add_node(jira_reader)
     builder.add_node(system_architect)
+    builder.add_node(requirements_analyzer)
     builder.add_node(spec_agent)
     builder.add_node(spec_reviewer)
     builder.add_node(generate_tests)
     builder.add_node(generate_code)
     builder.add_node(validate_modules)
+    builder.add_node(ui_designer)
     builder.add_node(generate_main_app)
+    builder.add_node(validate_app)
+    builder.add_node(fix_app)
     builder.add_node(run_tests_node)
+    builder.add_node(test_fixer)
     
     builder.add_edge(START, "jira_reader")
+    def should_continue_after_requirements(state: GenState) -> str:
+        approved = state.get("architecture_approved", False)
+        if approved:
+            return "continue"
+        return "regenerate"
+    
     builder.add_edge("jira_reader", "system_architect")
-    builder.add_edge("system_architect", "spec_agent")
+    builder.add_edge("system_architect", "requirements_analyzer")
+    builder.add_conditional_edges(
+        "requirements_analyzer",
+        should_continue_after_requirements,
+        {"continue": "spec_agent", "regenerate": "system_architect"}
+    )
     builder.add_edge("spec_agent", "spec_reviewer")
     builder.add_edge("spec_reviewer", "generate_tests")
     builder.add_edge("generate_tests", "generate_code")
     builder.add_edge("generate_code", "validate_modules")
-    builder.add_edge("validate_modules", "generate_main_app")
-    builder.add_edge("generate_main_app", "run_tests_node")
+    builder.add_edge("validate_modules", "ui_designer")
+    builder.add_edge("ui_designer", "generate_main_app")
+    builder.add_edge("generate_main_app", "validate_app")
+    builder.add_conditional_edges("validate_app", should_fix_app, {"fix_app": "fix_app", "run_tests": "run_tests_node"})
+    builder.add_edge("fix_app", "validate_app")
+    builder.add_conditional_edges("run_tests_node", should_fix_tests, {"fix": "test_fixer", "end": "__end__"})
+    builder.add_edge("test_fixer", "run_tests_node")
     
     graph = builder.compile()
     
