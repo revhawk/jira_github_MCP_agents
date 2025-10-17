@@ -155,7 +155,9 @@ def run_poc_graph(issue_key: str):
         spec = state.get("spec", "")
         key = state["issue_key"].upper().replace(" ", "_")
         module_name = key.replace("-", "_")
-        test_path = os.path.join("generated_tests", f"test_{key}.py")
+        output_dir = os.path.join("workspace", "tdd_modules", key)
+        os.makedirs(output_dir, exist_ok=True)
+        test_path = os.path.join(output_dir, f"test_{key}.py")
 
         client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
@@ -166,7 +168,7 @@ def run_poc_graph(issue_key: str):
             "EXAMPLE (follow this EXACT structure):\n"
             "```python\n"
             "import pytest\n"
-            "from generated_code.CAL_1 import add\n\n"
+            f"from {module_name} import add\n\n"
             "def test_add_positive_numbers():\n"
             "    assert add(1.5, 2.5) == 4.0\n\n"
             "def test_add_negative_numbers():\n"
@@ -177,7 +179,7 @@ def run_poc_graph(issue_key: str):
             "```\n\n"
             "STRICT REQUIREMENTS:\n"
             f"1. First line: import pytest\n"
-            f"2. Second line: from generated_code.{module_name} import <functions>\n"
+            f"2. Second line: from {module_name} import <functions>\n"
             "3. Blank line after imports\n"
             "4. Each test function must:\n"
             "   - Start with 'def test_'\n"
@@ -218,12 +220,12 @@ def run_poc_graph(issue_key: str):
         tests_src = re.sub(r'```\s*$', '', tests_src)
         
         # Validate imports
-        if f"generated_code.{module_name}" not in tests_src:
-            tests_src = re.sub(r"from\s+generated_code\.[\w_\-]+\s+import[\s\S]*?\n", "", tests_src)
+        if f"from {module_name}" not in tests_src:
+            tests_src = re.sub(r"from\s+[\w_\-]+\s+import[\s\S]*?\n", "", tests_src)
             if "import pytest" in tests_src:
-                tests_src = tests_src.replace("import pytest", f"import pytest\nfrom generated_code.{module_name} import *")
+                tests_src = tests_src.replace("import pytest", f"import pytest\nfrom {module_name} import *")
             else:
-                tests_src = f"import pytest\nfrom generated_code.{module_name} import *\n\n" + tests_src
+                tests_src = f"import pytest\nfrom {module_name} import *\n\n" + tests_src
         
         # Ensure at least one test
         if "def test_" not in tests_src:
@@ -233,8 +235,8 @@ def run_poc_graph(issue_key: str):
         try:
             ast.parse(tests_src)
         except SyntaxError as e:
-            print(f"⚠️ Test syntax error: {e}")
-            tests_src = f"import pytest\nfrom generated_code.{module_name} import *\n\ndef test_sanity():\n    assert True\n"
+            logger.error(f"Test syntax error: {e}")
+            tests_src = f"import pytest\nfrom {module_name} import *\n\ndef test_sanity():\n    assert True\n"
         
         # Validate coverage: count test functions
         test_count = tests_src.count("def test_")
@@ -258,7 +260,9 @@ def run_poc_graph(issue_key: str):
         spec = state.get("spec", "")
         key = state["issue_key"].upper().replace(" ", "_")
         module_name = key.replace("-", "_")
-        code_path = os.path.join("generated_code", f"{module_name}.py")
+        output_dir = os.path.join("workspace", "tdd_modules", key)
+        os.makedirs(output_dir, exist_ok=True)
+        code_path = os.path.join(output_dir, f"{module_name}.py")
         test_path = state.get("test_path")
         
         # Read validated tests
@@ -336,7 +340,7 @@ def run_poc_graph(issue_key: str):
         try:
             ast.parse(code_src)
         except SyntaxError as e:
-            print(f"⚠️ Code syntax error: {e}")
+            logger.error(f"Code syntax error: {e}")
             code_src = f"ISSUE_KEY = '{key}'\n\ndef placeholder():\n    pass\n"
 
         # Validate Streamlit app structure
@@ -349,7 +353,7 @@ def run_poc_graph(issue_key: str):
             
             # Extract function names from tests to build UI
             import re as _re
-            func_names = _re.findall(r'from generated_code\.\w+ import ([\w, ]+)', tests_src)
+            func_names = _re.findall(r'from \w+ import ([\w, ]+)', tests_src)
             functions = []
             if func_names:
                 functions = [f.strip() for f in func_names[0].split(',') if f.strip() != '*']
@@ -367,9 +371,6 @@ def run_poc_graph(issue_key: str):
                 code_src += "\n\nif __name__ == '__main__':\n    main()\n"
         
         # Write code file
-        init_path = os.path.join("generated_code", "__init__.py")
-        if not os.path.exists(init_path):
-            write_files([{"path": init_path, "content": ""}])
         # Final validation
         has_main = "def main():" in code_src or "def main(" in code_src
         has_streamlit = "import streamlit" in code_src or "from streamlit" in code_src
@@ -384,7 +385,11 @@ def run_poc_graph(issue_key: str):
 
     def run_tests_node(state: GenState) -> GenState:
         log("test_runner")
-        res = run_pytest(state.get("test_path"))
+        test_path = state.get("test_path")
+        if not test_path:
+            return {"output": "No test path found", "passed": 0, "failed": 1, "collected": 0}
+        # The test runner needs the code's directory in the python path
+        res = run_pytest(test_path, extra_paths=[os.path.dirname(test_path)])
         out = res.get("output", "")
         # Log full output to file only
         logger.info(f"PyTest output:\n{out}")
@@ -656,8 +661,9 @@ def run_poc_graph(issue_key: str):
         
         key = state["issue_key"].upper().replace(" ", "_")
         module_name = key.replace("-", "_")
-        code_path = state.get("code_path") or os.path.join("generated_code", f"{module_name}.py")
-        test_path = state.get("test_path") or os.path.join("generated_tests", f"test_{key}.py")
+        output_dir = os.path.join("workspace", "tdd_modules", key)
+        code_path = state.get("code_path") or os.path.join(output_dir, f"{module_name}.py")
+        test_path = state.get("test_path") or os.path.join(output_dir, f"test_{key}.py")
         
         spec = state.get("spec", "")
         fix_recommendations = state.get("fix_recommendations", "")
@@ -674,7 +680,7 @@ def run_poc_graph(issue_key: str):
                 "EXAMPLE STRUCTURE:\n"
                 "```python\n"
                 "import pytest\n"
-                f"from generated_code.{module_name} import add\n\n"
+            f"from {module_name} import add\n\n"
                 "def test_add_positive_numbers():\n"
                 "    assert add(1.5, 2.5) == 4.0\n"
                 "```\n\n"
@@ -736,12 +742,12 @@ def run_poc_graph(issue_key: str):
             code_src = current_code
         
         # Validate imports
-        if f"generated_code.{module_name}" not in tests_src:
-            tests_src = re.sub(r"from\s+generated_code\.[\w_\-]+\s+import[\s\S]*?\n", "", tests_src)
+        if f"from {module_name}" not in tests_src:
+            tests_src = re.sub(r"from\s+[\w_\-]+\s+import[\s\S]*?\n", "", tests_src)
             if "import pytest" in tests_src:
-                tests_src = tests_src.replace("import pytest", f"import pytest\nfrom generated_code.{module_name} import *")
+                tests_src = tests_src.replace("import pytest", f"import pytest\nfrom {module_name} import *")
             else:
-                tests_src = f"import pytest\nfrom generated_code.{module_name} import *\n\n" + tests_src
+                tests_src = f"import pytest\nfrom {module_name} import *\n\n" + tests_src
 
         # Ensure ISSUE_KEY
         if "ISSUE_KEY" not in code_src:
@@ -815,7 +821,7 @@ def run_poc_graph(issue_key: str):
     print(f"📊 Tests: {result.get('passed',0)} passed, {result.get('failed',0)} failed")
     if result.get("streamlit_ready"):
         print(f"🚀 streamlit run {result['code_path']}")
-    
+
     # Log: Full details
     logger.info(f"Jira Issue {issue_key}: {result.get('title')}")
     logger.info(f"Tests written to: {result.get('test_path')}")
@@ -844,7 +850,7 @@ def run_poc_graph(issue_key: str):
         regen_code = generate_code({"issue_key": issue_key, "title": result.get("title",""), "description": result.get("description",""), "spec": result.get("spec",""), "test_path": regen_tests.get("test_path")})
         result.update(regen_code)
         
-        test_out = run_tests_node({"test_path": result.get("test_path")})
+        test_out = run_tests_node({"test_path": result.get("test_path"), "code_path": result.get("code_path")})
         result.update(test_out)
         
         print(f"📊 Tests: {result.get('passed',0)} passed, {result.get('failed',0)} failed")
@@ -872,3 +878,4 @@ def run_poc_graph(issue_key: str):
     
     logger.info(f"Generation complete for {issue_key}")
     print(f"📄 Log: {log_file}\n")
+    return result

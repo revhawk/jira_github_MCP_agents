@@ -6,18 +6,15 @@ The unified workflow creates **one integrated Streamlit application** from multi
 
 ## Key Differences
 
-### Old Workflow (Single Ticket)
-- Input: One ticket (e.g., `CAL-1`)
-- Output: `generated_code/CAL_1.py` (standalone app)
-- Run: `streamlit run generated_code/CAL_1.py`
+### TDD Workflow (Standalone Module)
+- Output: `workspace/tdd_modules/CAL_1/CAL_1.py` (standalone app)
+- Run: `streamlit run workspace/tdd_modules/CAL_1/CAL_1.py`
 
-### New Workflow (Unified)
-- Input: Multiple tickets (e.g., `CAL-1, CAL-2, CAL-3`)
-- Output: 
-  - `app.py` (main Streamlit app)
-  - `modules/calculator.py` (business logic)
-  - `modules/validator.py` (business logic)
-- Run: `streamlit run app.py`
+### System Builder Workflow (Integrated App)
+  - `workspace/app.py` (main Streamlit app)
+  - `workspace/modules/calculator.py` (business logic)
+  - `workspace/modules/validator.py` (business logic)
+- Run: `streamlit run workspace/app.py`
 
 ## Workflow Steps
 
@@ -30,14 +27,15 @@ The unified workflow creates **one integrated Streamlit application** from multi
 4. **Spec Reviewer** - Validates specs
 5. **Generate Tests** - Creates pytest tests for modules (TDD)
 6. **Generate Code** - Implements modules to pass tests
-7. **Generate Main App** - Creates Streamlit UI that integrates modules
-8. **Run Tests** - Validates all modules
+7. **Validate Modules** - Checks that generated code matches the spec.
+8. **Generate Main App** - Creates Streamlit UI that integrates modules
+9. **Run Tests** - Validates all modules
 
 ## Usage
 
 ```bash
 python main.py
-# Choose option 3: Unified app
+# Choose option 2: Build Integrated Application
 # Enter project key: CAL
 # Enter tickets: CAL-1,CAL-2,CAL-3
 ```

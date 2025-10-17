@@ -8,3 +8,12 @@
 # Python cache
 __pycache__/
 *.pyc
+
+# Generated code and artifacts
+/workspace/
+/generated_code/
+/generated_tests/
+/modules/
+/app.py
+/generation_manifest.json
+/logs/

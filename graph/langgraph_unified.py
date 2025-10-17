@@ -36,6 +36,8 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         epic_description: str
         architecture_plan: str
         architecture_approved: bool
+        arch_iteration: int
+        rejection_reason: str
         modules: dict  # {module_name: {tickets: [], functions: []}}
         specs: dict  # {module_name: spec_json}
         test_files: dict  # {module_name: path}
@@ -104,6 +106,8 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         tickets = state.get("tickets", [])
         epic_description = state.get("epic_description", "")
         project_key = state.get("project_key", "")
+        arch_iteration = state.get("arch_iteration", 0)
+        rejection_reason = state.get("rejection_reason", "")
         client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         if not tickets:
@@ -136,8 +140,14 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             logger.info(f"Inferred application goal: {app_goal}")
             print(f"🎯 Goal: {app_goal}")
         
+        # Add feedback from previous rejection
+        feedback = ""
+        if arch_iteration > 0 and rejection_reason:
+            feedback = f"\n\nPREVIOUS ATTEMPT WAS REJECTED:\n{rejection_reason}\n\nFIX: Make it SIMPLER. Use fewer modules, basic functions only.\n\n"
+        
         prompt = (
             "You are a software architect. Design a unified Streamlit application structure.\n\n"
+            f"{feedback}"
             "EXAMPLE OUTPUT:\n"
             "{\n"
             '  "app_name": "Calculator App",\n'
@@ -209,11 +219,18 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         epic_description = state.get("epic_description", "")
         architecture_plan = state.get("architecture_plan", "")
         modules = state.get("modules", {})
+        arch_iteration = state.get("arch_iteration", 0)
         client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
+        # Skip if no EPIC or max retries reached
         if not epic_description:
-            logger.info("No EPIC description - skipping requirements analysis")
-            return {}
+            logger.info("No EPIC description - auto-approving architecture")
+            return {"architecture_approved": True}
+        
+        if arch_iteration >= 3:
+            logger.warning(f"Max architecture iterations ({arch_iteration}) reached - auto-approving")
+            print("⚠️  Max retries reached - accepting current architecture")
+            return {"architecture_approved": True, "arch_iteration": arch_iteration + 1}
         
         prompt = (
             "Analyze EPIC requirements and REJECT over-engineering.\n\n"
@@ -250,13 +267,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         
         if approved:
             print("✅ Requirements check: APPROVED")
+            return {"architecture_approved": True, "arch_iteration": arch_iteration + 1}
         else:
-            print("❌ Requirements check: REJECTED - will regenerate simpler architecture")
-            # Log what was found
+            print(f"❌ Requirements check: REJECTED (attempt {arch_iteration + 1}/3) - will regenerate simpler architecture")
+            rejection = analysis  # Full analysis as feedback
             if 'FSM' in analysis.upper():
                 logger.warning("Rejected due to FSM pattern")
-        
-        return {"architecture_approved": approved}
+            return {"architecture_approved": False, "arch_iteration": arch_iteration + 1, "rejection_reason": rejection}
 
     def spec_agent(state: GenState) -> GenState:
         log_phase("spec_agent")
@@ -629,8 +646,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             with open(example_file, 'r') as f:
                 example = f"REFERENCE EXAMPLE (proven working pattern):\n```python\n{f.read()}\n```\n"
         else:
-            example = "No reference example available for this pattern.\n"
-        else:
             example = (
                 "```python\n"
                 "import streamlit as st\n"
@@ -856,7 +871,7 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             try:
                 import subprocess
                 result = subprocess.run(
-                    ['python', '-m', 'pytest', ui_test_path, '-v', '--tb=short'],
+                    ['python', '-m', 'pytest', ui_test_path, '-v', '--tb=short', '-p', 'no:warnings'],
                     capture_output=True, text=True, timeout=10, cwd=os.getcwd()
                 )
                 if result.returncode != 0:
@@ -998,12 +1013,32 @@ def run_unified_graph(project_key: str, ticket_keys: list):
     
     graph = builder.compile()
     
-    result = graph.invoke({"project_key": project_key, "ticket_keys": ticket_keys})
+    try:
+        result = graph.invoke({"project_key": project_key, "ticket_keys": ticket_keys})
+        
+        print(f"\n✅ Unified app generated")
+        print(f"📊 Tests: {result.get('passed', 0)} passed, {result.get('failed', 0)} failed")
+        print(f"🚀 streamlit run {result.get('app_path', 'app.py')}")
+        print(f"📄 Log: {log_file}\n")
+        
+        logger.info(f"Generation complete for {project_key}")
+        return result
     
-    print(f"\n✅ Unified app generated")
-    print(f"📊 Tests: {result.get('passed', 0)} passed, {result.get('failed', 0)} failed")
-    print(f"🚀 streamlit run {result.get('app_path', 'app.py')}")
-    print(f"📄 Log: {log_file}\n")
-    
-    logger.info(f"Generation complete for {project_key}")
-    return result
+    except Exception as e:
+        error_type = type(e).__name__
+        
+        if 'RateLimitError' in error_type or 'insufficient_quota' in str(e):
+            print(f"\n❌ OpenAI API Quota Exceeded")
+            print(f"\n💡 Action Required:")
+            print(f"   1. Go to https://platform.openai.com/settings/organization/billing")
+            print(f"   2. Add credits or upgrade your plan")
+            print(f"   3. Wait a few minutes for quota to update")
+            print(f"   4. Re-run: python main.py\n")
+            logger.error(f"API quota exceeded: {e}")
+        else:
+            print(f"\n❌ Error during generation: {error_type}")
+            print(f"   {str(e)[:200]}")
+            print(f"\n📄 Check log for details: {log_file}\n")
+            logger.error(f"Generation failed: {e}", exc_info=True)
+        
+        return None

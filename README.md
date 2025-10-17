@@ -1,15 +1,14 @@
 # Jira Code Generator
 
-AI-powered code generation from Jira tickets using LangGraph workflow with multiple specialized agents.
+AI-powered code generation from Jira tickets using LangGraph, featuring multiple specialized agents for TDD and full-stack application generation.
 
 ## Features
 
 - **Unified App Generation**: Multiple Jira tickets → One cohesive Streamlit application
-- **EPIC Support**: Uses EPIC descriptions as requirements/constraints
+- **TDD Workflow**: Generates standalone, tested modules from single tickets.
 - **Multi-Agent Workflow**: Architecture design, spec extraction, code generation, testing, and validation
 - **Automatic Fixing**: Auto-fixes failing tests and Streamlit app errors
-- **Reference Examples**: Learns from proven working patterns
-- **Cost Optimized**: Uses gpt-4o-mini for most tasks, o1 for architecture decisions
+- **Cost Optimized**: Uses `gpt-4o-mini` for a balance of performance and cost.
 
 ## Quick Start
 
