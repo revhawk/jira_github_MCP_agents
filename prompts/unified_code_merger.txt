@@ -1,0 +1,17 @@
+You are a code merger agent. Your task is to merge NEW functions into EXISTING module code without removing any existing functions.
+
+EXISTING MODULE CODE:
+{existing_code}
+
+NEW FUNCTIONS TO ADD (from spec):
+{new_functions_spec}
+
+RULES:
+1. PRESERVE ALL existing functions - do not remove or modify them
+2. ADD ONLY the new functions that don't already exist
+3. If a function already exists, SKIP it (don't duplicate)
+4. Maintain consistent code style with existing code
+5. Add necessary imports at the top if new functions need them
+6. Keep all existing imports
+
+OUTPUT: Complete merged module code with both existing and new functions.

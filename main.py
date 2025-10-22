@@ -16,6 +16,7 @@ import os
 MODE_TDD = "1"
 MODE_UNIFIED = "2"
 MODE_DEMO = "3"
+MODE_INCREMENTAL = "4"
 MAX_JIRA_RESULTS = 50
 DEMO_APP_PATH = "simple_calculator/app.py"
 
@@ -33,14 +34,14 @@ def main():
 
     # Ask user for mode
     print("\n🔧 Jira Coder")
-    print("1. Generate Standalone code and tests (from a single Jira ticket using TDD)") # This is already correct
-    print("2. Build Integrated Application (from multiple tickets)") # This is already correct
-    print("3. Run Calculator Demo") # This is already correct
+    print("1. Generate Standalone code and tests (from a single Jira ticket using TDD)")
+    print("2. Build Integrated Application (from multiple tickets)")
+    print("3. Run Calculator Demo")
+    print("4. Incremental Update (add features to existing app without regenerating UI)")
     try:
-        # Default to '2' (Unified App) if user just presses Enter, as per previous request
-        mode = input("Choose mode (1, 2, or 3): ").strip() or MODE_UNIFIED
+        mode = input("Choose mode (1, 2, 3, or 4): ").strip() or MODE_UNIFIED
     except EOFError:
-        mode = MODE_UNIFIED # Default to unified app on EOF
+        mode = MODE_UNIFIED
 
     if mode == MODE_UNIFIED:
         # Mode 2: Build Integrated Application
@@ -81,6 +82,23 @@ def main():
         else:
             print(f"⚠️  Demo application not found at '{DEMO_APP_PATH}'.")
             print("   Please ensure the calculator app is saved in the 'simple_calculator' directory.")
+    
+    elif mode == MODE_INCREMENTAL:
+        # Mode 4: Incremental Update
+        from incremental_update import incremental_update
+        
+        try:
+            ticket_input = input("Enter ticket keys to add (comma-separated, e.g., CAL-31,CAL-32): ").strip()
+        except EOFError:
+            ticket_input = ""
+        
+        if not ticket_input:
+            print("⚠️ No ticket keys provided. Exiting.")
+            return
+        
+        ticket_keys = [k.strip().upper() for k in ticket_input.split(",") if k.strip()]
+        print(f"\n🔄 Incremental update for {len(ticket_keys)} tickets...")
+        incremental_update(ticket_keys)
     
     else: # mode == MODE_TDD or default to 1
         # Mode 1: Generate Standalone Module (can be single or bulk)

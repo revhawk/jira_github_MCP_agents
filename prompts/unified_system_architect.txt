@@ -24,11 +24,11 @@ Based on these tickets, define a logical application architecture.
 
 **Example - Simple Calculator:**
 ```json
-{
+{{
   "modules": [
-    {"name": "calculator", "functions": ["add", "subtract", "multiply", "divide", "square_root"]}
+    {{"name": "calculator", "functions": ["add", "subtract", "multiply", "divide", "square_root"]}}
   ]
-}
+}}
 ```
 
 **WHEN COMPLEXITY IS JUSTIFIED:**
@@ -38,13 +38,13 @@ Based on these tickets, define a logical application architecture.
 
 **Example - Complex App:**
 ```json
-{
+{{
   "modules": [
-    {"name": "models", "functions": ["User", "Session", "Database"]},
-    {"name": "api", "functions": ["fetch_data", "post_data"]},
-    {"name": "ui", "functions": ["render_dashboard", "handle_input"]}
+    {{"name": "models", "functions": ["User", "Session", "Database"]}},
+    {{"name": "api", "functions": ["fetch_data", "post_data"]}},
+    {{"name": "ui", "functions": ["render_dashboard", "handle_input"]}}
   ]
-}
+}}
 ```
 
 Group related tickets into modules. Each module should have a clear purpose and contain a list of functions that will implement the required features.

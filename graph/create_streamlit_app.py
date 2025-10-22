@@ -233,6 +233,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         arch_iteration = state.get("arch_iteration", 0)
         client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
+        # Skip if modules already exist (incremental update mode)
+        module_dir = "modules"
+        if os.path.exists(module_dir) and any(f.endswith('.py') and f != '__init__.py' for f in os.listdir(module_dir)):
+            logger.info("Existing modules detected - skipping requirements check for incremental update")
+            print("🔄 Incremental update mode - accepting new features")
+            return {"architecture_approved": True}
+        
         # Skip if no EPIC or max retries reached
         if not epic_description:
             logger.info("No EPIC description - auto-approving architecture")
@@ -390,11 +397,99 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         
         return {"test_files": test_files}
 
+    def code_merger(state: GenState) -> GenState:
+        """
+        Node: Checks if modules exist and merges new functions into existing code.
+        This enables incremental updates without losing existing functionality.
+        """
+        _log_phase("code_merger")
+        specs = state.get("specs", {})
+        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
+        
+        module_dir = "modules"
+        os.makedirs(module_dir, exist_ok=True)
+        
+        merged_specs = {}
+        
+        for module_name, spec in specs.items():
+            code_path = os.path.join(module_dir, f"{module_name}.py")
+            
+            # Check if module already exists
+            if os.path.exists(code_path):
+                with open(code_path, "r") as f:
+                    existing_code = f.read()
+                
+                # Extract existing function names
+                existing_funcs = re.findall(r'^def (\w+)\(', existing_code, re.MULTILINE)
+                
+                # Extract new functions from spec
+                try:
+                    spec_json = json.loads(spec)
+                    new_funcs = [f["name"] for f in spec_json.get("functions", [])]
+                except:
+                    new_funcs = []
+                
+                # Filter out functions that already exist
+                funcs_to_add = [f for f in new_funcs if f not in existing_funcs]
+                
+                if funcs_to_add:
+                    logger.info(f"{module_name}: Merging {len(funcs_to_add)} new functions into existing code")
+                    print(f"🔄 {module_name}: Adding {funcs_to_add} to existing code")
+                    
+                    # Create filtered spec with only new functions
+                    try:
+                        spec_json = json.loads(spec)
+                        spec_json["functions"] = [f for f in spec_json.get("functions", []) if f["name"] in funcs_to_add]
+                        filtered_spec = json.dumps(spec_json)
+                    except:
+                        filtered_spec = spec
+                    
+                    # Use merger prompt
+                    prompt_template = load_prompt("unified_code_merger.txt")
+                    prompt = prompt_template.format(
+                        existing_code=existing_code,
+                        new_functions_spec=filtered_spec
+                    )
+                    
+                    resp = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": load_prompt("system_python_code_only.txt")},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.1,
+                        max_tokens=3000,
+                    )
+                    
+                    merged_code = (resp.choices[0].message.content or "").strip()
+                    merged_code = re.sub(r'^```python\s*', '', merged_code)
+                    merged_code = re.sub(r'```\s*$', '', merged_code)
+                    
+                    # Validate merged code
+                    try:
+                        ast.parse(merged_code)
+                        write_files([{"path": code_path, "content": merged_code}])
+                        logger.info(f"Merged code written: {code_path}")
+                    except SyntaxError as e:
+                        logger.error(f"Merged code has syntax error: {e}. Keeping existing code.")
+                        # Keep existing code if merge fails
+                else:
+                    logger.info(f"{module_name}: All functions already exist, skipping")
+                    print(f"✓ {module_name}: Up to date")
+                
+                # Use original spec for downstream (tests still need to cover all functions)
+                merged_specs[module_name] = spec
+            else:
+                # New module - use full spec for generation
+                logger.info(f"{module_name}: New module, will generate from scratch")
+                merged_specs[module_name] = spec
+        
+        return {"specs": merged_specs}
+
     def generate_code(state: GenState) -> GenState:
         """
         Node: Implements the business logic for each module.
-        The goal is to write Python code that satisfies the spec and passes
-        the previously generated tests.
+        Only generates code for NEW modules (existing modules handled by code_merger).
         """
         _log_phase("generate_code")
         specs = state.get("specs", {})
@@ -408,6 +503,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         # Generate modules
         for module_name, spec in specs.items():
             code_path = os.path.join(module_dir, f"{module_name}.py")
+            
+            # Skip if module already exists (was handled by code_merger)
+            if os.path.exists(code_path):
+                code_files[module_name] = code_path
+                logger.info(f"Using existing module: {code_path}")
+                continue
+            
             test_path = test_files.get(module_name, "")
             
             tests_src = ""
@@ -1032,6 +1134,7 @@ def run_unified_graph(project_key: str, ticket_keys: list):
     builder.add_node(spec_agent)
     builder.add_node(spec_reviewer)
     builder.add_node(generate_tests)
+    builder.add_node(code_merger)
     builder.add_node(generate_code)
     builder.add_node(validate_modules)
     builder.add_node(ui_designer)
@@ -1068,7 +1171,8 @@ def run_unified_graph(project_key: str, ticket_keys: list):
 
     builder.add_edge("spec_agent", "spec_reviewer")
     builder.add_edge("spec_reviewer", "generate_tests")
-    builder.add_edge("generate_tests", "generate_code")
+    builder.add_edge("generate_tests", "code_merger")
+    builder.add_edge("code_merger", "generate_code")
     builder.add_edge("generate_code", "validate_modules")
     builder.add_edge("validate_modules", "run_tests_node") # Run tests before UI design
 
