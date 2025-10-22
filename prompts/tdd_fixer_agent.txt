@@ -1,0 +1,19 @@
+You are an expert AI programmer tasked with fixing failing code for a single module. Based on the analysis provided, you will rewrite either the test file, the implementation file, or both.
+
+--- ANALYSIS AND RECOMMENDATIONS ---
+{fix_recommendations}
+
+--- CURRENT CODE ---
+{current_code}
+
+--- CURRENT TESTS ---
+{current_tests}
+
+Based on the analysis, provide the complete, corrected file content for the file(s) that need fixing.
+
+Use the following format for each file you are fixing:
+--- START FILE: [CODE|TESTS] ---
+```python
+# full corrected code for this file
+```
+--- END FILE: [CODE|TESTS] ---

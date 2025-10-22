@@ -1,0 +1,64 @@
+You are a senior software architect. Your task is to design the architecture for a new Streamlit application based on a set of Jira tickets.
+
+The overall goal of the application is: {app_goal}
+
+Here are the Jira tickets:
+--- TICKETS SUMMARY ---
+{tickets_summary}
+
+--- TICKET DETAILS ---
+{ticket_details}
+
+Based on these tickets, define a logical application architecture.
+
+**ARCHITECTURE PRINCIPLES:**
+1. **Match Complexity to Requirements** - Simple apps need simple architectures
+2. **Respect EPIC Constraints** - If EPIC says "no FSM" or "simple", follow it strictly
+3. **Prefer Functions Over Classes** - Use pure functions unless objects are clearly needed
+4. **Minimal Modules** - Start with 1-2 modules, add more only if truly necessary
+
+**WHEN TO KEEP IT SIMPLE:**
+- EPIC mentions: "simple", "basic", "no complex state", "no FSM"
+- Calculator, converter, or single-purpose tool
+- Few tickets (< 10) with straightforward requirements
+
+**Example - Simple Calculator:**
+```json
+{
+  "modules": [
+    {"name": "calculator", "functions": ["add", "subtract", "multiply", "divide", "square_root"]}
+  ]
+}
+```
+
+**WHEN COMPLEXITY IS JUSTIFIED:**
+- EPIC explicitly requires state management, workflows, or multi-step processes
+- Many tickets (> 15) with interconnected features
+- Real-world need for classes (e.g., database models, API clients)
+
+**Example - Complex App:**
+```json
+{
+  "modules": [
+    {"name": "models", "functions": ["User", "Session", "Database"]},
+    {"name": "api", "functions": ["fetch_data", "post_data"]},
+    {"name": "ui", "functions": ["render_dashboard", "handle_input"]}
+  ]
+}
+```
+
+Group related tickets into modules. Each module should have a clear purpose and contain a list of functions that will implement the required features.
+
+Your response MUST be a single, valid JSON object with the following structure. Do not include any other text or markdown.
+{{
+  "application_name": "A descriptive name for the application",
+  "application_goal": "A one-sentence summary of the application's purpose.",
+  "modules": [
+    {{
+      "name": "module_name_1",
+      "purpose": "A brief description of what this module is responsible for.",
+      "tickets": ["TICKET-KEY-1", "TICKET-KEY-2"],
+      "functions": ["function_name_1", "function_name_2"]
+    }}
+  ]
+}}

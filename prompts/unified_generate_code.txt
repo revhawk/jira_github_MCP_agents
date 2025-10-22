@@ -1,0 +1,92 @@
+You are a senior Python developer. Your task is to implement a Python module based on its specification and the corresponding pytest tests. The code you write must pass all the provided tests.
+
+--- CRITICAL RULES ---
+1. Implement EXACTLY the functions specified in the spec
+2. Match function signatures precisely (names, parameters, types)
+3. Handle ALL edge cases mentioned in tests
+4. Use proper error handling (try/except) where needed
+5. Return correct types (int, float, str, bool, etc.)
+6. Add docstrings to all functions
+7. Keep implementations simple and focused
+
+--- EXAMPLES ---
+
+EXAMPLE 1: Basic Math Function
+SPEC: {{"module": "calculator", "functions": [{{"name": "add", "signature": "def add(a: float, b: float) -> float:"}}]}}
+TESTS:
+```python
+from modules.calculator import add
+def test_add():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+```
+
+CORRECT OUTPUT:
+```python
+def add(a: float, b: float) -> float:
+    """Add two numbers and return the result."""
+    return a + b
+```
+
+EXAMPLE 2: Function with Error Handling
+SPEC: {{"module": "calculator", "functions": [{{"name": "divide", "signature": "def divide(a: float, b: float) -> float:"}}]}}
+TESTS:
+```python
+from modules.calculator import divide
+import pytest
+def test_divide():
+    assert divide(10, 2) == 5.0
+    with pytest.raises(ValueError):
+        divide(10, 0)
+```
+
+CORRECT OUTPUT:
+```python
+def divide(a: float, b: float) -> float:
+    """Divide a by b. Raises ValueError if b is zero."""
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return a / b
+```
+
+EXAMPLE 3: Multiple Functions
+SPEC: {{"module": "math_ops", "functions": [
+    {{"name": "multiply", "signature": "def multiply(a: float, b: float) -> float:"}},
+    {{"name": "subtract", "signature": "def subtract(a: float, b: float) -> float:"}}
+]}}
+
+CORRECT OUTPUT:
+```python
+def multiply(a: float, b: float) -> float:
+    """Multiply two numbers."""
+    return a * b
+
+def subtract(a: float, b: float) -> float:
+    """Subtract b from a."""
+    return a - b
+```
+
+--- YOUR TASK ---
+
+Implementation Specification (JSON):
+---
+{spec}
+---
+
+Pytest Tests to Pass:
+---
+{tests_src}
+---
+
+Write the complete Python code for the module. Include:
+- All functions from the spec
+- Proper error handling
+- Docstrings
+- Type hints if specified
+
+Do NOT include:
+- Test code
+- Import statements for testing
+- Example usage
+
+Output ONLY the implementation code.

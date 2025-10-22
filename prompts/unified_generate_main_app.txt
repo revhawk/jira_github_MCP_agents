@@ -1,0 +1,154 @@
+You are a senior Streamlit developer. Your task is to create the main `app.py` file for a multi-module Streamlit application. You will integrate several business logic modules into a cohesive user interface.
+
+--- APPLICATION ARCHITECTURE ---
+{architecture_plan}
+
+--- AVAILABLE MODULES AND FUNCTIONS ---
+These are the ONLY functions you can import. DO NOT import functions that don't exist:
+{functions_text}
+
+--- MODULE SPECIFICATIONS ---
+{specs_text}
+
+--- CRITICAL RULES (MUST FOLLOW) ---
+
+1. **IMPORTS**: ONLY import functions that exist in the functions list above. Verify each import.
+
+2. **BUTTON KEYS**: EVERY st.button() MUST have a unique key parameter:
+   ✅ CORRECT: st.button('7', key='7')
+   ❌ WRONG: st.button('7')
+
+3. **BUTTON PATTERN**: Use if-statement pattern with st.rerun(), NOT callbacks:
+   ✅ CORRECT:
+   ```python
+   if st.button('7', key='7'):
+       st.session_state.display += '7'
+       st.rerun()
+   ```
+   ❌ WRONG: st.button('7', on_click=handler)
+
+4. **OPERATOR BUTTONS**: Use emoji for label, symbol for key, append SYMBOL not emoji:
+   ✅ CORRECT:
+   ```python
+   if st.button('✖️', key='*'):  # Emoji label, symbol key
+       st.session_state.display += '*'  # Append symbol, not emoji
+       st.rerun()
+   ```
+   ❌ WRONG: st.button('*', key='multiply') or appending '✖️'
+
+5. **DISPLAY**: Use st.markdown() with backticks INSIDE f-string:
+   ✅ CORRECT: st.markdown(f'### Display: `{st.session_state.display}`')
+   ❌ WRONG: st.text_input(disabled=True) or st.markdown(f'`{display}`')
+
+6. **SESSION STATE**: Initialize at top of file:
+   ```python
+   if 'display' not in st.session_state:
+       st.session_state.display = '0'
+   ```
+
+7. **BUTTON GRID LAYOUT**: Use `with col:` blocks, NOT cols[index]:
+   ✅ CORRECT:
+   ```python
+   col1, col2, col3, col4 = st.columns(4)
+   with col1:
+       if st.button('7', key='7', use_container_width=True):
+           st.session_state.display += '7'
+           st.rerun()
+   with col2:
+       if st.button('8', key='8', use_container_width=True):
+           st.session_state.display += '8'
+           st.rerun()
+   ```
+   ❌ WRONG: cols[0].button('7', key='7')
+
+8. **DIGIT HANDLING**: Replace '0' on first digit:
+   ```python
+   if st.session_state.display == '0':
+       st.session_state.display = '7'
+   else:
+       st.session_state.display += '7'
+   ```
+
+9. **CLEAR BUTTON**: Reset to '0', not empty string:
+   ```python
+   if st.button('Clear', key='C', use_container_width=True):
+       st.session_state.display = '0'
+       st.rerun()
+   ```
+
+10. **EQUALS BUTTON**: Parse expression and call module functions:
+    ```python
+    if st.button('=', key='=', use_container_width=True):
+        try:
+            # Parse the expression and call appropriate module functions
+            # For simple calculator: use eval() as fallback if parsing is complex
+            st.session_state.display = str(eval(st.session_state.display))
+        except:
+            st.session_state.display = 'Error'
+        st.rerun()
+    ```
+    
+11. **USE MODULE FUNCTIONS**: Import and call functions from modules when possible:
+    ```python
+    from modules.calculator import add, subtract, multiply, divide
+    # Use these functions in your logic where appropriate
+    ```
+
+--- COMPLETE BUTTON GRID EXAMPLE ---
+```python
+import streamlit as st
+from modules.calculator import add, subtract, multiply, divide
+
+st.title('Calculator')
+
+if 'display' not in st.session_state:
+    st.session_state.display = '0'
+
+st.markdown(f'### Display: `{st.session_state.display}`')
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    if st.button('7', key='7', use_container_width=True):
+        if st.session_state.display == '0':
+            st.session_state.display = '7'
+        else:
+            st.session_state.display += '7'
+        st.rerun()
+
+with col2:
+    if st.button('8', key='8', use_container_width=True):
+        if st.session_state.display == '0':
+            st.session_state.display = '8'
+        else:
+            st.session_state.display += '8'
+        st.rerun()
+
+with col3:
+    if st.button('9', key='9', use_container_width=True):
+        if st.session_state.display == '0':
+            st.session_state.display = '9'
+        else:
+            st.session_state.display += '9'
+        st.rerun()
+
+with col4:
+    if st.button('✖️', key='*', use_container_width=True):
+        st.session_state.display += '*'
+        st.rerun()
+
+# More rows...
+
+if st.button('=', key='=', use_container_width=True):
+    try:
+        st.session_state.display = str(eval(st.session_state.display))
+    except:
+        st.session_state.display = 'Error'
+    st.rerun()
+
+if st.button('Clear', key='C', use_container_width=True):
+    st.session_state.display = '0'
+    st.rerun()
+```
+
+Write the complete, runnable `app.py` file following ALL rules above.

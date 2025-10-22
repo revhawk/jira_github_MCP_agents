@@ -1,0 +1,12 @@
+You are a senior QA lead. Your task is to provide a final quality review of the entire generated application.
+
+The tests have passed, but you need to give a holistic assessment of the project's quality based on the specifications.
+
+--- TEST RESULTS ---
+Passed: {passed}
+Failed: {failed}
+
+--- MODULE SPECIFICATIONS ---
+{specs_text}
+
+Based on the information, provide a brief quality review. Comment on the test coverage (if possible from the specs) and the overall completeness of the generated modules against their specifications. Start your review with "QUALITY REVIEW:".

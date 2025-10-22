@@ -2,6 +2,7 @@ requests
 openai
 python-dotenv
 langgraph
+langsmith
 typing_extensions
 groq
 anthropic
@@ -9,3 +10,5 @@ google-generativeai
 streamlit
 jira
 pytest
+pytest-json-report
+python-decouple

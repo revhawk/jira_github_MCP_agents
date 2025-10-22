@@ -1,0 +1,38 @@
+You are a technical analyst. Your task is to create a detailed implementation specification for a Python module based on its purpose and the associated Jira tickets.
+
+Module Name: {module_name}
+Module Purpose: {purpose}
+
+Associated Jira Tickets:
+{tickets_text}
+
+
+Based on the above, provide a detailed specification. Your response MUST be a single, valid JSON object without any markdown fences (like ```json).
+
+For each ticket, extract the required function, its inputs, and its outputs.
+
+--- EXAMPLE TICKET ANALYSIS ---
+Ticket: "CAL-1: Implement addition"
+Description: "Create a function that takes two numbers and returns their sum."
+
+Analysis Result -> Function Spec:
+{{
+  "name": "add", "signature": "def add(a: float, b: float) -> float:", "description": "Adds two numbers.", "inputs": [{{"name": "a", "type": "float", "description": "First number"}}, {{"name": "b", "type": "float", "description": "Second number"}}], "outputs": [{{"name": "sum", "type": "float", "description": "The sum of a and b."}}]
+}}
+---
+
+The JSON structure should be:
+{{
+  "module": "{module_name}",
+  "functions": [
+    {{
+      "name": "function_name",
+      "signature": "def function_name(param1: type) -> return_type:",
+      "description": "What this function does.",
+      "inputs": [{{"name": "param1", "type": "type", "description": "Description of the parameter."}}],
+      "outputs": [{{"name": "return_value", "type": "type", "description": "Description of the return value."}}],
+      "edge_cases": ["What happens if input is invalid?", "What happens on division by zero?"]
+    }}
+  ],
+  "acceptance_criteria": ["The module must...", "The functions must handle..."]
+}}

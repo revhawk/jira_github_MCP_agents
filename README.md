@@ -53,28 +53,15 @@ Choose mode:
 ## Workflow Architecture
 
 ### Agents
-
-1. **jira_reader** - Loads tickets and EPIC requirements
-2. **system_architect** (o1) - Designs app structure and modules
-3. **requirements_analyzer** (o1) - Validates architecture simplicity
-4. **spec_agent** (o1) - Extracts function specs from tickets
-5. **spec_reviewer** - Reviews spec completeness
-6. **generate_tests** - Creates pytest tests
-7. **generate_code** - Implements modules
-8. **validate_modules** - Checks function existence
-9. **ui_designer** - Determines optimal UI pattern
-10. **generate_main_app** - Creates Streamlit app
-11. **validate_app** - Checks for Streamlit errors
-12. **fix_app** - Auto-fixes validation errors
-13. **run_tests** - Executes pytest
-14. **test_fixer** - Fixes failing tests (with loop detection)
-
-### Key Features
-
-- **Architecture Validation Loop**: Blocks over-engineered designs (FSM, state machines)
-- **Automatic Test Fixing**: Infinite loop detection prevents getting stuck
-- **Streamlit Validation**: Catches button patterns, session_state conflicts
-- **Reference Examples**: Uses proven working code patterns
+1.  **jira_reader**: Reads Jira tickets based on keys or fetches all from a project.
+2.  **system_architect**: Designs the application architecture based on Jira tickets, inferring the application's goal and defining modules, their purposes, and functions.
+3.  **spec_agent**: Generates detailed implementation specifications for each module, including function signatures, inputs, outputs, edge cases, and acceptance criteria.
+4.  **spec_reviewer**: Reviews the generated specifications for completeness and quality, acting as a quality gate before code generation.
+5.  **generate_tests**: Generates pytest test files for each module based on its spec, covering normal functionality, edge cases, and error handling.
+6.  **generate_code**: Implements the business logic for each module, aiming to satisfy the spec and pass generated tests.
+7.  **validate_modules**: Validates that generated modules contain the functions they claim to have according to their specifications.
+8.  **generate_main_app**: Creates the main Streamlit application file (`app.py`), integrating all generated modules into a cohesive user interface.
+9.  **run_tests**: Executes the generated pytest tests against the generated code.
 
 ## Generated Structure
 

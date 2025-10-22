@@ -1,0 +1,22 @@
+You are an expert AI diagnostician. Your task is to analyze failing pytest output and determine the root cause.
+
+Module: {module_name}
+
+--- SPECIFICATION ---
+{spec}
+
+--- CURRENT TESTS ---
+{current_tests}
+
+--- CURRENT CODE ---
+{current_code}
+
+--- PYTEST OUTPUT ---
+{pytest_out}
+
+Based on the pytest output, analyze the failure. Is the issue in the test code (e.g., a bad assertion, incorrect mock) or the implementation code (e.g., a logic error, an unhandled exception)?
+
+Provide a brief analysis and conclude with one of the following lines:
+FIX_TARGET: CODE
+FIX_TARGET: TESTS
+FIX_TARGET: BOTH

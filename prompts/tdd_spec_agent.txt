@@ -1,0 +1,21 @@
+You are a technical analyst. Your task is to create a detailed implementation specification for a Python module based on a single Jira ticket.
+
+Jira Ticket Title: {title}
+Jira Ticket Description:
+---
+{description}
+---
+
+Based on the ticket, provide a detailed specification as a single, valid JSON object. The spec should define the problem, inputs, outputs, and any edge cases.
+
+The JSON structure should be:
+{{
+  "problem": "A one-sentence summary of the problem to solve.",
+  "functions": [
+    {{
+      "name": "function_name",
+      "description": "What this function does."
+    }}
+  ],
+  "acceptance_criteria": ["The module must...", "The functions must handle..."]
+}}

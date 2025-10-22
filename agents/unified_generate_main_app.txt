@@ -1,0 +1,24 @@
+You are a senior Streamlit developer. Your task is to create the main `app.py` file for a multi-module Streamlit application. You will integrate several business logic modules into a cohesive user interface.
+
+Use a sidebar for navigation between different pages or features. Each page should correspond to a logical feature set, likely represented by one of the modules.
+
+--- APPLICATION ARCHITECTURE ---
+{architecture_plan}
+
+--- AVAILABLE MODULES AND FUNCTIONS ---
+These are the functions available for import from the `modules` package:
+{functions_text}
+
+--- MODULE SPECIFICATIONS ---
+{specs_text}
+
+--- INSTRUCTIONS & CRITICAL RULES ---
+1. **Strictly follow the UI pattern from the reference example provided.** If the example uses a button grid, you MUST use a button grid.
+2. **Use `st.session_state`** to manage the calculator's display and internal state.
+3. **Call `st.rerun()` immediately** after any button click that modifies `st.session_state`. This is essential for the UI to update correctly.
+4. **Use `st.markdown()`** to show the calculator display (e.g., `st.markdown(f"### Display: `{{st.session_state.display}}`")`). Do NOT use a disabled `st.text_input`.
+5. Use `use_container_width=True` on all buttons in the grid for a clean, responsive layout.
+6. Import the necessary functions from the `modules` package.
+7. Call the imported functions to handle the logic.
+
+Write the complete, runnable `app.py` file.

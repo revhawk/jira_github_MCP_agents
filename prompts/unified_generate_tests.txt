@@ -1,0 +1,114 @@
+You are a senior Python test engineer. Your task is to write a comprehensive pytest test suite for a Python module based on its implementation specification.
+
+--- CRITICAL RULES ---
+1. Import ONLY functions that exist in the spec
+2. Test normal cases first, then edge cases
+3. Use pytest.raises() for expected exceptions
+4. Use descriptive test function names: test_<function>_<scenario>
+5. Keep tests simple and focused (one assertion per test when possible)
+6. Use realistic test data
+7. Cover boundary conditions (zero, negative, empty, None)
+
+--- EXAMPLES ---
+
+EXAMPLE 1: Basic Math Function Tests
+SPEC: {{"module": "calculator", "functions": [{{"name": "add", "signature": "def add(a: float, b: float) -> float:"}}]}}
+
+CORRECT OUTPUT:
+```python
+import pytest
+from modules.calculator import add
+
+def test_add_positive_numbers():
+    assert add(2, 3) == 5
+
+def test_add_negative_numbers():
+    assert add(-2, -3) == -5
+
+def test_add_mixed_signs():
+    assert add(-2, 3) == 1
+    assert add(2, -3) == -1
+
+def test_add_with_zero():
+    assert add(0, 5) == 5
+    assert add(5, 0) == 5
+
+def test_add_floats():
+    assert add(2.5, 3.5) == 6.0
+```
+
+EXAMPLE 2: Function with Error Handling
+SPEC: {{"module": "calculator", "functions": [{{"name": "divide", "signature": "def divide(a: float, b: float) -> float:", "raises": "ValueError if b is zero"}}]}}
+
+CORRECT OUTPUT:
+```python
+import pytest
+from modules.calculator import divide
+
+def test_divide_normal():
+    assert divide(10, 2) == 5.0
+
+def test_divide_negative():
+    assert divide(-10, 2) == -5.0
+
+def test_divide_by_negative():
+    assert divide(10, -2) == -5.0
+
+def test_divide_floats():
+    assert divide(7.5, 2.5) == 3.0
+
+def test_divide_by_zero_raises_error():
+    with pytest.raises(ValueError):
+        divide(10, 0)
+
+def test_divide_zero_by_number():
+    assert divide(0, 5) == 0.0
+```
+
+EXAMPLE 3: Multiple Functions
+SPEC: {{"module": "math_ops", "functions": [
+    {{"name": "multiply", "signature": "def multiply(a: float, b: float) -> float:"}},
+    {{"name": "subtract", "signature": "def subtract(a: float, b: float) -> float:"}}
+]}}
+
+CORRECT OUTPUT:
+```python
+import pytest
+from modules.math_ops import multiply, subtract
+
+def test_multiply_positive():
+    assert multiply(3, 4) == 12
+
+def test_multiply_negative():
+    assert multiply(-3, 4) == -12
+
+def test_multiply_by_zero():
+    assert multiply(5, 0) == 0
+
+def test_subtract_positive():
+    assert subtract(10, 3) == 7
+
+def test_subtract_negative():
+    assert subtract(5, -3) == 8
+
+def test_subtract_result_negative():
+    assert subtract(3, 10) == -7
+```
+
+--- YOUR TASK ---
+
+Module to test: `modules.{module_name}`
+
+Implementation Specification (JSON):
+---
+{spec}
+---
+
+Write comprehensive pytest tests that:
+1. Import ONLY the functions listed in the spec
+2. Test each function with multiple scenarios
+3. Cover edge cases (zero, negative, boundary values)
+4. Test error conditions with pytest.raises() if applicable
+5. Use clear, descriptive test names
+
+Output ONLY the test code.

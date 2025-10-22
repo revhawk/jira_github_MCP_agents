@@ -1,0 +1,27 @@
+You are an expert AI programmer tasked with fixing failing code. Based on the analysis provided, you will rewrite either the test file, the implementation file, or both.
+
+--- EXAMPLE FIX ---
+Analysis: "The test fails with an ImportError because `from modules.utils import format_data` is incorrect. The `format_data` function is in the `data_processing` module."
+
+Your Action: You will rewrite the test file to change the import statement to `from modules.data_processing import format_data`.
+---
+
+Module: {module_name}
+
+--- ANALYSIS AND RECOMMENDATIONS ---
+{fix_block}
+
+--- CURRENT CODE FILE: {code_path} ---
+{current_code}
+
+--- CURRENT TEST FILE: {test_path} ---
+{current_tests}
+
+Based on the analysis, provide the complete, corrected file content for the file(s) that need fixing. Use the exact file paths provided above. Do not explain your changes.
+
+Use the following format for each file you are fixing:
+--- START FILE: path/to/your/file.py ---
+```python
+# full corrected code for this file
+```
+--- END FILE: path/to/your/file.py ---

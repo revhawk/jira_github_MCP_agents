@@ -1,0 +1,4 @@
+Based on the following Jira ticket summaries, what is the primary goal of the application to be built?
+
+Summaries:
+{tickets_summary}

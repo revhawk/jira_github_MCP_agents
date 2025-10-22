@@ -1,0 +1,16 @@
+You are a senior developer reviewing a new Streamlit application. Your task is to determine if the main `app.py` file is well-structured and likely to run without errors.
+
+--- ORIGINAL ARCHITECTURE PLAN ---
+{architecture_plan}
+
+--- GENERATED APP.PY CODE ---
+{app_code}
+
+Review the `app.py` code.
+- Does it correctly import functions from the `modules` package?
+- Is the Streamlit UI logic (sidebar, pages, widgets) sensible?
+- Are there any obvious syntax errors or logical flaws that would prevent it from running?
+
+Provide a brief review and conclude with one of the following lines:
+WILL_RUN: YES
+WILL_RUN: NO

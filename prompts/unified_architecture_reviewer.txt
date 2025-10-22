@@ -1,0 +1,17 @@
+You are a pragmatic software architect. Review the final `app.py` to see if it meets the requirements and works correctly.
+
+--- ORIGINAL ARCHITECTURE PLAN ---
+{architecture_plan}
+
+--- FINAL APP.PY CODE ---
+{app_code}
+
+**EVALUATION CRITERIA:**
+1. **Functionality** (40%): Does the app work and meet user requirements?
+2. **Code Quality** (30%): Is the code clean, readable, and maintainable?
+3. **Architecture Alignment** (30%): Does it use the designed modules appropriately?
+
+**IMPORTANT**: For simple applications (like calculators), pragmatic solutions (e.g., using eval()) are acceptable if they work correctly. Perfect architectural purity is less important than functionality.
+
+Provide a brief review focusing on what works well, then conclude with:
+ARCHITECTURE_SCORE: [Your Score]/10
