@@ -45,7 +45,7 @@ def main():
     print("\n📝 Generation Modes:")
     print("1. Generate Standalone code and tests (TDD workflow)")
     print("2. Build Integrated Application (full generation from tickets)")
-    print("3. Incremental Update (add features without regenerating UI)")
+    print("3. Incremental Update (add features AND regenerate UI)")
     print("4. Compare Archived Apps (show differences)")
     print("5. View LangSmith Stats (monitoring & costs)")
     print("\n🎬 Demo Apps:")
@@ -96,8 +96,9 @@ def main():
     
     try:
         mode = input("\nChoose mode: ").strip() or MODE_UNIFIED
-    except EOFError:
-        mode = MODE_UNIFIED
+    except (EOFError, KeyboardInterrupt):
+        print("\n\n👋 Goodbye!")
+        sys.exit(0)
 
     if mode == MODE_UNIFIED:
         # Mode 2: Build Integrated Application
@@ -152,16 +153,18 @@ def main():
         
         try:
             project_key = input("\nEnter Jira project key (e.g., CAL): ").strip().upper()
-        except EOFError:
-            project_key = ""
+        except (EOFError, KeyboardInterrupt):
+            print("\n\n👋 Cancelled.")
+            sys.exit(0)
         if not project_key:
             print("⚠️ No project key provided. Exiting.")
             return
         
         try:
             ticket_input = input("Enter ticket keys (comma-separated, or press Enter for ALL): ").strip()
-        except EOFError:
-            ticket_input = ""
+        except (EOFError, KeyboardInterrupt):
+            print("\n\n👋 Cancelled.")
+            sys.exit(0)
         
         if not ticket_input:
             # Load all tickets from project
@@ -197,6 +200,9 @@ def main():
             mode1 = input("\nFirst archive mode: ").strip()
             mode2 = input("Second archive mode: ").strip()
             compare_archives(int(mode1), int(mode2))
+        except KeyboardInterrupt:
+            print("\n\n👋 Cancelled.")
+            sys.exit(0)
         except (ValueError, EOFError):
             print("Invalid input.")
     
@@ -216,8 +222,9 @@ def main():
         
         try:
             ticket_input = input("Enter ticket keys to add (comma-separated, e.g., CAL-31,CAL-32): ").strip()
-        except EOFError:
-            ticket_input = ""
+        except (EOFError, KeyboardInterrupt):
+            print("\n\n👋 Cancelled.")
+            sys.exit(0)
         
         if not ticket_input:
             print("⚠️ No ticket keys provided. Exiting.")

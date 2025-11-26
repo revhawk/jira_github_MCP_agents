@@ -15,6 +15,7 @@ from openai import OpenAI
 from config.settings import Settings
 from utils.logging_utils import setup_logging
 from utils.file_utils import load_prompt, read_text_safe
+from utils.langsmith_stats import display_run_stats
 import ast
 import logging
 import json
@@ -1232,9 +1233,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         print(f"\n✅ Unified app generated")
         print(f"📊 Tests: {result.get('passed', 0)} passed, {result.get('failed', 0)} failed")
         print(f"🚀 streamlit run {result.get('app_path', 'app.py')}")
-        print(f"📄 Log: {log_file}\n")
+        print(f"📄 Log: {log_file}")
         
         logger.info(f"Generation complete for {project_key}")
+        
+        # Display LangSmith stats for this run
+        display_run_stats(limit=30)
+        
         return result
     except Exception as e:
         error_msg = str(e)

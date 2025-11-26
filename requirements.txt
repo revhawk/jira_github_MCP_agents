@@ -2,6 +2,7 @@ requests
 openai
 python-dotenv
 langgraph
+langchain-openai
 langsmith
 typing_extensions
 groq

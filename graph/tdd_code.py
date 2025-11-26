@@ -9,6 +9,7 @@ from openai import OpenAI
 from config.settings import Settings
 from utils.logging_utils import setup_logging
 from utils.file_utils import load_prompt, read_text_safe
+from utils.langsmith_stats import display_run_stats
 import ast
 import logging
 import json
@@ -627,5 +628,9 @@ def run_poc_graph(issue_key: str):
             print("🔧 See log for fix recommendations")
 
     logger.info(f"Generation complete for {issue_key}")
-    print(f"📄 Log: {log_file}\n")
+    print(f"📄 Log: {log_file}")
+    
+    # Display LangSmith stats for this run
+    display_run_stats(limit=20)
+    
     return result
