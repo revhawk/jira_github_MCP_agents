@@ -45,6 +45,12 @@ OPENAI_API_KEY=your_openai_api_key
 GROQ_API_KEY=your_groq_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 GEMINI_API_KEY=your_gemini_api_key
+
+# LangSmith Tracing (Optional - for monitoring and debugging)
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+LANGCHAIN_API_KEY=your_langsmith_api_key
+LANGCHAIN_PROJECT=jira-code-generator
 ```
 
 ### 3. Run Jira Coder
@@ -57,7 +63,11 @@ Then open http://localhost:8501 in your browser.
 
 **Option B: Command Line**
 ```bash
-python main.py
+# Option 1: Direct script
+python3 main.py
+
+# Option 2: Using launcher (from project directory)
+./jira_coder
 ```
 
 Choose mode:
@@ -65,6 +75,7 @@ Choose mode:
 2. **Full Generation** - Complete app from multiple tickets
 3. **Incremental Update** - Add features without regenerating
 4. **Compare Archives** - View differences between versions
+5. **LangSmith Stats** - View monitoring and costs
 10-12. **Demos** - Run example calculators
 20+. **Archives** - Run previously generated apps
 
@@ -168,6 +179,31 @@ Create an EPIC ticket with description containing:
 - Architecture preferences
 
 Link all feature tickets to the EPIC.
+
+## LangSmith Monitoring
+
+LangSmith provides real-time tracing and monitoring of all agent executions.
+
+### Setup
+
+1. Create account at https://smith.langchain.com/
+2. Get API key from Settings → API Keys
+3. Add to `.env`:
+
+```bash
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+LANGCHAIN_API_KEY=your_langsmith_api_key
+LANGCHAIN_PROJECT=jira-code-generator
+```
+
+### View Stats
+
+- **Dashboard**: https://smith.langchain.com/
+- **Traces**: Full execution logs for each agent
+- **Token Usage**: Real-time cost tracking
+- **Latency**: Response times per agent
+- **Errors**: Detailed failure analysis
 
 ## Cost Optimization
 

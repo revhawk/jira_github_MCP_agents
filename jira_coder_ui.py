@@ -8,6 +8,10 @@ import subprocess
 import os
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Page config
 st.set_page_config(
@@ -264,6 +268,41 @@ if st.sidebar.button("📊 View Test Results"):
             st.sidebar.json(report)
     else:
         st.sidebar.info("No test results yet")
+
+# LangSmith Stats
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📊 LangSmith Stats")
+
+api_key = os.getenv("LANGCHAIN_API_KEY")
+project_name = os.getenv("LANGCHAIN_PROJECT", "jira-code-generator")
+
+if api_key:
+    if st.sidebar.button("🔄 Refresh Stats"):
+        try:
+            from langsmith import Client
+            client = Client(api_key=api_key)
+            
+            runs = list(client.list_runs(project_name=project_name, limit=10))
+            
+            if runs:
+                total_tokens = sum(getattr(run, 'total_tokens', 0) or 0 for run in runs)
+                success_count = sum(1 for run in runs if run.status == "success")
+                
+                st.sidebar.metric("Recent Runs", len(runs))
+                st.sidebar.metric("Success Rate", f"{success_count}/{len(runs)}")
+                st.sidebar.metric("Total Tokens", f"{total_tokens:,}")
+                st.sidebar.metric("Est. Cost", f"${total_tokens * 0.000001:.4f}")
+                
+                st.sidebar.markdown(f"[View Dashboard →](https://smith.langchain.com/)")
+            else:
+                st.sidebar.info("No runs yet")
+        except ImportError:
+            st.sidebar.warning("Install: `pip install langsmith`")
+        except Exception as e:
+            st.sidebar.error(f"Error: {str(e)[:50]}")
+else:
+    st.sidebar.info("Add LANGCHAIN_API_KEY to .env")
+    st.sidebar.markdown("[Get API Key →](https://smith.langchain.com/)")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Jira Coder v2.0 | AI-Powered Code Generation")

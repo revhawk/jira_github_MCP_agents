@@ -18,6 +18,7 @@ MODE_TDD = "1"
 MODE_UNIFIED = "2"
 MODE_INCREMENTAL = "3"
 MODE_COMPARE = "4"
+MODE_LANGSMITH = "5"
 MODE_DEMO_BASIC = "10"
 MODE_DEMO_MEMORY = "11"
 MODE_DEMO_BINARY = "12"
@@ -46,6 +47,7 @@ def main():
     print("2. Build Integrated Application (full generation from tickets)")
     print("3. Incremental Update (add features without regenerating UI)")
     print("4. Compare Archived Apps (show differences)")
+    print("5. View LangSmith Stats (monitoring & costs)")
     print("\n🎬 Demo Apps:")
     print("10. Run Basic Calculator Demo")
     print("11. Run Calculator with Memory Demo")
@@ -198,8 +200,18 @@ def main():
         except (ValueError, EOFError):
             print("Invalid input.")
     
+    elif mode == MODE_LANGSMITH:
+        # Mode 5: View LangSmith Stats
+        try:
+            subprocess.run(["python3", "view_langsmith_stats.py"])
+        except KeyboardInterrupt:
+            print("\n")
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            print("\n💡 Make sure langsmith is installed: pip install langsmith")
+    
     elif mode == MODE_INCREMENTAL:
-        # Mode 4: Incremental Update
+        # Mode 3: Incremental Update
         from incremental_update import incremental_update
         
         try:

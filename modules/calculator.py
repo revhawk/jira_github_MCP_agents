@@ -68,3 +68,28 @@ def convertToDecimalFromHex(hexNumber: str) -> int:
         return int(hexNumber, 16)
     except ValueError:
         raise ValueError("Invalid hexadecimal input")
+
+def convertFromHex(hexNumber: str, outputFormat: str) -> str:
+    """Converts a hexadecimal number to decimal or binary format.
+    
+    Args:
+        hexNumber: The hexadecimal number as a string.
+        outputFormat: The desired output format, either 'decimal' or 'binary'.
+    
+    Returns:
+        The converted number as a string in the specified format.
+    
+    Raises:
+        ValueError: If the hexNumber is invalid or the outputFormat is not recognized.
+    """
+    try:
+        decimal_value = int(hexNumber, 16)
+    except ValueError:
+        raise ValueError("Invalid hexadecimal input")
+    
+    if outputFormat == 'decimal':
+        return str(decimal_value)
+    elif outputFormat == 'binary':
+        return bin(decimal_value)
+    else:
+        raise ValueError("Output format must be 'decimal' or 'binary'")

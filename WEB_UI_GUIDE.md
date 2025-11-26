@@ -197,6 +197,21 @@ Then open: **http://localhost:8501**
 - **🗂️ Open Archive Folder**: Shows archive path
 - **📊 View Test Results**: Shows pass/fail counts from `.report.json`
 
+### LangSmith Stats
+- **📊 LangSmith Stats**: Real-time monitoring (if configured)
+- **🔄 Refresh Stats**: Click to update metrics
+- Shows:
+  - Recent runs count
+  - Success rate
+  - Total tokens used
+  - Estimated cost
+- **View Dashboard →**: Link to full LangSmith dashboard
+
+**Setup Required:**
+1. Add `LANGCHAIN_API_KEY` to `.env`
+2. Get API key from https://smith.langchain.com/
+3. Click "Refresh Stats" to view metrics
+
 ---
 
 ## Tips & Tricks
@@ -224,6 +239,7 @@ Then open: **http://localhost:8501**
 - **Port 8501 in use**: Stop other Streamlit instances
 - **No archives shown**: Generate apps first (Mode 2)
 - **Demo won't launch**: Check `demos/` folder exists
+- **LangSmith stats not showing**: Install `pip install langsmith` and add API key to `.env`
 
 ---
 
