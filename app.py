@@ -21,30 +21,42 @@ st.title('Advanced Streamlit Calculator')
 mode_col1, mode_col2, mode_col3 = st.columns(3)
 with mode_col1:
     if st.button('DEC', key='mode_dec', use_container_width=True, type='primary' if st.session_state.mode == 'DEC' else 'secondary'):
+        old_mode = st.session_state.mode
         st.session_state.mode = 'DEC'
         if st.session_state.display != '0' and st.session_state.display != 'Error':
             try:
-                st.session_state.display = str(int(st.session_state.display, 2))
+                if old_mode == 'BIN':
+                    st.session_state.display = str(int(st.session_state.display, 2))
+                elif old_mode == 'HEX':
+                    st.session_state.display = str(int(st.session_state.display, 16))
             except:
                 pass
         st.rerun()
 
 with mode_col2:
     if st.button('BIN', key='mode_bin', use_container_width=True, type='primary' if st.session_state.mode == 'BIN' else 'secondary'):
+        old_mode = st.session_state.mode
         st.session_state.mode = 'BIN'
         if st.session_state.display != '0' and st.session_state.display != 'Error':
             try:
-                st.session_state.display = bin(int(eval(st.session_state.display)))[2:]
+                if old_mode == 'DEC':
+                    st.session_state.display = bin(int(eval(st.session_state.display)))[2:]
+                elif old_mode == 'HEX':
+                    st.session_state.display = bin(int(st.session_state.display, 16))[2:]
             except:
                 pass
         st.rerun()
 
 with mode_col3:
     if st.button('HEX', key='mode_hex', use_container_width=True, type='primary' if st.session_state.mode == 'HEX' else 'secondary'):
+        old_mode = st.session_state.mode
         st.session_state.mode = 'HEX'
         if st.session_state.display != '0' and st.session_state.display != 'Error':
             try:
-                st.session_state.display = hex(int(eval(st.session_state.display)))[2:].upper()
+                if old_mode == 'DEC':
+                    st.session_state.display = hex(int(eval(st.session_state.display)))[2:].upper()
+                elif old_mode == 'BIN':
+                    st.session_state.display = hex(int(st.session_state.display, 2))[2:].upper()
             except:
                 pass
         st.rerun()
@@ -171,9 +183,20 @@ with col3:
                 st.session_state.display = bin(int(result))[2:]
             elif st.session_state.mode == 'HEX':
                 expr = st.session_state.display
-                def hex_to_dec(match):
-                    return str(int(match.group(0), 16))
-                expr_dec = re.sub(r'[0-9A-Fa-f]+', hex_to_dec, expr)
+                import re
+                # Split by operators while keeping them
+                parts = re.split(r'([+\-*/])', expr)
+                # Convert hex numbers to decimal
+                converted = []
+                for part in parts:
+                    if part in ['+', '-', '*', '/']:
+                        converted.append(part)
+                    elif part.strip():
+                        try:
+                            converted.append(str(int(part, 16)))
+                        except:
+                            converted.append(part)
+                expr_dec = ''.join(converted)
                 result = eval(expr_dec)
                 st.session_state.display = hex(int(result))[2:].upper()
             else:
@@ -203,11 +226,15 @@ with col2:
             if st.session_state.mode == 'BIN':
                 dec_val = int(st.session_state.display, 2)
                 result = square_root(float(dec_val))
-                st.session_state.display = bin(int(result))[2:]
+                # For binary, convert back to decimal to show decimal result
+                st.session_state.mode = 'DEC'
+                st.session_state.display = str(result)
             elif st.session_state.mode == 'HEX':
                 dec_val = int(st.session_state.display, 16)
                 result = square_root(float(dec_val))
-                st.session_state.display = hex(int(result))[2:].upper()
+                # For hex, convert back to decimal to show decimal result
+                st.session_state.mode = 'DEC'
+                st.session_state.display = str(result)
             else:
                 result = square_root(float(eval(st.session_state.display)))
                 st.session_state.display = str(result)
@@ -216,6 +243,86 @@ with col2:
         except Exception:
             st.session_state.display = 'Error'
         st.rerun()
+
+with col3:
+    if st.button('±', key='negate', use_container_width=True):
+        try:
+            if st.session_state.mode == 'BIN':
+                dec_val = int(st.session_state.display, 2)
+                result = negate(float(dec_val))
+                st.session_state.display = bin(int(result))[2:]
+            elif st.session_state.mode == 'HEX':
+                dec_val = int(st.session_state.display, 16)
+                result = negate(float(dec_val))
+                st.session_state.display = hex(int(result))[2:].upper()
+            else:
+                result = negate(float(eval(st.session_state.display)))
+                st.session_state.display = str(result)
+        except Exception:
+            st.session_state.display = 'Error'
+        st.rerun()
+
+with col4:
+    if st.button('%', key='percent', use_container_width=True):
+        try:
+            result = percentage_conversion(float(eval(st.session_state.display)))
+            st.session_state.display = str(result)
+        except Exception:
+            st.session_state.display = 'Error'
+        st.rerun()
+
+# Hex digits row (A-F) - only visible in HEX mode
+if st.session_state.mode == 'HEX':
+    st.markdown('---')
+    hex_col1, hex_col2, hex_col3, hex_col4, hex_col5, hex_col6 = st.columns(6)
+    
+    with hex_col1:
+        if st.button('A', key='A', use_container_width=True):
+            if st.session_state.display == '0':
+                st.session_state.display = 'A'
+            else:
+                st.session_state.display += 'A'
+            st.rerun()
+    
+    with hex_col2:
+        if st.button('B', key='B', use_container_width=True):
+            if st.session_state.display == '0':
+                st.session_state.display = 'B'
+            else:
+                st.session_state.display += 'B'
+            st.rerun()
+    
+    with hex_col3:
+        if st.button('C', key='C_hex', use_container_width=True):
+            if st.session_state.display == '0':
+                st.session_state.display = 'C'
+            else:
+                st.session_state.display += 'C'
+            st.rerun()
+    
+    with hex_col4:
+        if st.button('D', key='D', use_container_width=True):
+            if st.session_state.display == '0':
+                st.session_state.display = 'D'
+            else:
+                st.session_state.display += 'D'
+            st.rerun()
+    
+    with hex_col5:
+        if st.button('E', key='E', use_container_width=True):
+            if st.session_state.display == '0':
+                st.session_state.display = 'E'
+            else:
+                st.session_state.display += 'E'
+            st.rerun()
+    
+    with hex_col6:
+        if st.button('F', key='F', use_container_width=True):
+            if st.session_state.display == '0':
+                st.session_state.display = 'F'
+            else:
+                st.session_state.display += 'F'
+            st.rerun()
 
 # Memory Buttons Row
 st.markdown('---')

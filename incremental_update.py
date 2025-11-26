@@ -198,14 +198,42 @@ REFERENCE EXAMPLES:
 
 REQUIREMENTS:
 1. Keep existing UI patterns (button grid, mode toggles, memory buttons)
-2. Add UI elements for NEW functions (e.g., HEX mode if hex functions exist)
+2. Add UI elements for NEW functions:
+   - If hex functions exist: Add HEX mode toggle AND A-F hex digit buttons
+   - A-F buttons should only show when mode is HEX
+   - Use unique keys for hex buttons (e.g., key='C_hex' to avoid conflict with Clear)
 3. Import all functions from modules.calculator
 4. Use st.rerun() for button clicks
-5. Handle DEC/BIN/HEX modes if hex functions exist
-6. Maintain clean button grid layout
-7. Keep all existing features working
+5. Handle DEC/BIN/HEX modes if hex functions exist:
+   - Mode conversion must handle all combinations: DEC↔BIN, DEC↔HEX, BIN↔HEX
+   - Store old_mode before switching to know how to convert
+   - DEC→BIN: bin(int(eval(display)))[2:]
+   - DEC→HEX: hex(int(eval(display)))[2:].upper()
+   - BIN→DEC: str(int(display, 2))
+   - BIN→HEX: hex(int(display, 2))[2:].upper()
+   - HEX→DEC: str(int(display, 16))
+   - HEX→BIN: bin(int(display, 16))[2:]
+6. Arithmetic evaluation per mode:
+   - BIN: Split by operators, convert binary to decimal, eval, convert back to binary
+   - HEX: Split by operators ([+\-*/]), convert each hex number to decimal, eval, convert back to hex
+   - DEC: Normal eval
+7. Operations that produce decimals (√, /, etc.):
+   - If in BIN or HEX mode and result has decimals, auto-switch to DEC mode
+   - Example: √C in HEX → convert C to 12, calculate √12=3.464, switch to DEC, show 3.464
+   - This prevents truncation and preserves precision
+8. Negate (±) button:
+   - Must handle negative numbers in all modes
+   - BIN: Convert to decimal, negate, convert back
+   - HEX: Convert to decimal, negate, convert back
+   - DEC: Normal negation
+9. Maintain clean button grid layout
+10. Keep all existing features working (memory, square root, etc.)
+11. Disable inappropriate buttons per mode:
+    - BIN mode: Disable 2-9, A-F
+    - HEX mode: Enable 0-9, A-F
+    - DEC mode: Enable 0-9, disable A-F
 
-OUTPUT: Complete app.py code with updated UI.
+OUTPUT: Complete app.py code with updated UI including all hex functionality and edge cases.
 """
     
     messages = [
