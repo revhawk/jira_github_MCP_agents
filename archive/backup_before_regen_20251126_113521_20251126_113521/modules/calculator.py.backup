@@ -45,26 +45,3 @@ def convertToBinary(decimalNumber: int) -> str:
     if decimalNumber < 0:
         return '-' + bin(decimalNumber)[3:]  # Two's complement representation for negative numbers
     return bin(decimalNumber)[2:]  # Remove '0b' prefix
-
-def addHexNumbers(hexNumber1: str, hexNumber2: str) -> str:
-    """Adds two hexadecimal numbers and returns the result in hexadecimal format."""
-    try:
-        decimal1 = int(hexNumber1, 16)
-        decimal2 = int(hexNumber2, 16)
-    except ValueError:
-        raise ValueError("Invalid hexadecimal input")
-    result = decimal1 + decimal2
-    return hex(result)
-
-def convertToHex(decimalNumber: int) -> str:
-    """Converts a decimal number to its hexadecimal representation."""
-    if not isinstance(decimalNumber, int):
-        raise TypeError("Input must be an integer")
-    return hex(decimalNumber)
-
-def convertToDecimalFromHex(hexNumber: str) -> int:
-    """Converts a hexadecimal number to its decimal representation."""
-    try:
-        return int(hexNumber, 16)
-    except ValueError:
-        raise ValueError("Invalid hexadecimal input")

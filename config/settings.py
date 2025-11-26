@@ -13,18 +13,19 @@ load_dotenv()
 class Settings:
     # === Core API Keys ===
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
     JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
     # === Jira Settings ===
-    JIRA_BASE = os.getenv("JIRA_BASE", "https://yourdomain.atlassian.net")
-    JIRA_EMAIL = os.getenv("JIRA_EMAIL")  # optional for Jira auth
-    JIRA_PROJECT_KEY = os.getenv("JIRA_PROJECT_KEY", "MFLP")
-    # Jira Software board id used for Agile listing fallback
-    JIRA_BOARD_ID = int(os.getenv("JIRA_BOARD_ID", "1"))
+    JIRA_BASE = os.getenv("JIRA_BASE")
+    JIRA_EMAIL = os.getenv("JIRA_EMAIL")
+    JIRA_PROJECT_KEY = os.getenv("JIRA_PROJECT_KEY", "CAL")
+    JIRA_BOARD_ID = os.getenv("JIRA_BOARD_ID", "34")
+    JIRA_PROJECT_KEY = os.getenv("JIRA_PROJECT_KEY", "CAL")
+    JIRA_BOARD_ID = os.getenv("JIRA_BOARD_ID", "34")
 
     # === GitHub Defaults ===
     GITHUB_REPO = os.getenv("GITHUB_REPO", "org/repo-name")

@@ -2,8 +2,9 @@
 import logging
 import os
 from datetime import datetime
+from typing import Optional
 
-def setup_logging(log_prefix: str, identifier: str = None):
+def setup_logging(log_prefix: str, identifier: Optional[str] = None):
     """
     Sets up logging for the application, creating a timestamped log file
     and configuring console output.
