@@ -185,7 +185,7 @@ def regenerate_ui(module_code: str, module_path: str):
                 with open(os.path.join(ref_dir, fname), 'r') as f:
                     ref_examples += f"\n--- {fname} ---\n{f.read()}\n"
     
-    ui_prompt = f"""Regenerate the Streamlit calculator UI to include ALL available functions.
+    ui_prompt = f"""Regenerate the Streamlit UI to include ALL available functions.
 
 AVAILABLE FUNCTIONS:
 {json.dumps(functions, indent=2)}
@@ -197,43 +197,44 @@ REFERENCE EXAMPLES:
 {ref_examples}
 
 REQUIREMENTS:
-1. Keep existing UI patterns (button grid, mode toggles, memory buttons)
-2. Add UI elements for NEW functions:
-   - If hex functions exist: Add HEX mode toggle AND A-F hex digit buttons
-   - A-F buttons should only show when mode is HEX
-   - Use unique keys for hex buttons (e.g., key='C_hex' to avoid conflict with Clear)
-3. Import all functions from modules.calculator
-4. Use st.rerun() for button clicks
-5. Handle DEC/BIN/HEX modes if hex functions exist:
-   - Mode conversion must handle all combinations: DEC↔BIN, DEC↔HEX, BIN↔HEX
-   - Store old_mode before switching to know how to convert
-   - DEC→BIN: bin(int(eval(display)))[2:]
-   - DEC→HEX: hex(int(eval(display)))[2:].upper()
-   - BIN→DEC: str(int(display, 2))
-   - BIN→HEX: hex(int(display, 2))[2:].upper()
-   - HEX→DEC: str(int(display, 16))
-   - HEX→BIN: bin(int(display, 16))[2:]
-6. Arithmetic evaluation per mode:
-   - BIN: Split by operators, convert binary to decimal, eval, convert back to binary
-   - HEX: Split by operators ([+\-*/]), convert each hex number to decimal, eval, convert back to hex
-   - DEC: Normal eval
-7. Operations that produce decimals (√, /, etc.):
-   - If in BIN or HEX mode and result has decimals, auto-switch to DEC mode
-   - Example: √C in HEX → convert C to 12, calculate √12=3.464, switch to DEC, show 3.464
-   - This prevents truncation and preserves precision
-8. Negate (±) button:
-   - Must handle negative numbers in all modes
-   - BIN: Convert to decimal, negate, convert back
-   - HEX: Convert to decimal, negate, convert back
-   - DEC: Normal negation
-9. Maintain clean button grid layout
-10. Keep all existing features working (memory, square root, etc.)
-11. Disable inappropriate buttons per mode:
-    - BIN mode: Disable 2-9, A-F
-    - HEX mode: Enable 0-9, A-F
-    - DEC mode: Enable 0-9, disable A-F
+1. Keep existing UI patterns and layouts
+2. Analyze function types and add appropriate UI elements:
 
-OUTPUT: Complete app.py code with updated UI including all hex functionality and edge cases.
+   CALCULATOR FUNCTIONS (add, multiply, hex, binary, sqrt, etc.):
+   - If hex functions: Add HEX mode toggle + A-F buttons (visible only in HEX)
+   - If binary functions: Add BIN mode toggle, disable 2-9 in BIN
+   - Mode conversions: Handle all combinations (DEC↔BIN↔HEX)
+   - Operations with decimals in BIN/HEX: Auto-switch to DEC
+   - Use unique keys (key='C_hex' vs key='C')
+   
+   DATA PROCESSING FUNCTIONS (transform, filter, aggregate, etc.):
+   - Add file upload: st.file_uploader()
+   - Add data preview: st.dataframe()
+   - Add operation selector: st.selectbox()
+   - Add download: st.download_button()
+   
+   FORM FUNCTIONS (validate, submit, save, etc.):
+   - Add input fields: st.text_input(), st.number_input()
+   - Add validation with st.error()/st.success()
+   - Add submit button with validation
+   - Add clear/reset
+   
+   VISUALIZATION FUNCTIONS (plot, chart, analyze, etc.):
+   - Add filters in sidebar: st.sidebar.selectbox()
+   - Add charts: st.line_chart(), st.bar_chart()
+   - Add metrics: st.metric()
+   - Add refresh controls
+
+3. Import all functions from modules
+4. Use st.rerun() for interactive elements
+5. Add error handling for invalid inputs
+6. Disable inappropriate controls per mode/state
+7. Maintain clean, intuitive layout
+8. Keep all existing features working
+
+OUTPUT: Complete app.py code with updated UI.
+Analyze function types and generate appropriate UI elements.
+Handle edge cases specific to the application domain.
 """
     
     messages = [

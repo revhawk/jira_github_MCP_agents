@@ -94,27 +94,43 @@ These are the ONLY functions you can import. DO NOT import functions that don't 
     # Use these functions in your logic where appropriate
     ```
 
-12. **HEX MODE SUPPORT** (if hex functions exist):
-    - Add DEC/BIN/HEX mode toggles using st.columns(3)
-    - Add A-F hex digit buttons (only visible when mode=='HEX')
-    - Use unique keys for hex buttons: key='C_hex' (to avoid conflict with Clear)
-    - Disable buttons per mode: BIN disables 2-9,A-F; HEX enables all
-    - Mode conversion must handle ALL combinations:
-      * DEC→BIN: bin(int(eval(display)))[2:]
-      * DEC→HEX: hex(int(eval(display)))[2:].upper()
-      * BIN→DEC: str(int(display, 2))
-      * BIN→HEX: hex(int(display, 2))[2:].upper()
-      * HEX→DEC: str(int(display, 16))
-      * HEX→BIN: bin(int(display, 16))[2:]
-    - Arithmetic per mode:
-      * BIN: Split by operators, convert binary to decimal, eval, convert back
-      * HEX: Split by operators, convert hex to decimal, eval, convert back to hex
-      * DEC: Normal eval
-    - Operations producing decimals (√, /) in BIN/HEX mode:
-      * Auto-switch to DEC mode to preserve precision
-      * Example: √C in HEX → convert to 12, calc √12=3.464, switch to DEC
+12. **DOMAIN-SPECIFIC FEATURES**:
+    Analyze the available functions and add appropriate UI elements:
+    
+    FOR CALCULATORS (if math functions exist):
+    - If hex functions: Add DEC/BIN/HEX mode toggles, A-F buttons (HEX only), mode conversions
+    - If binary functions: Add BIN mode toggle, disable 2-9 in BIN mode
+    - Mode conversions: Handle all combinations (DEC↔BIN↔HEX)
+    - Operations with decimals in BIN/HEX: Auto-switch to DEC mode
+    
+    FOR DATA PROCESSORS (if transform/filter functions exist):
+    - File upload widget: st.file_uploader()
+    - Data preview: st.dataframe()
+    - Processing options: st.selectbox() or st.radio()
+    - Download results: st.download_button()
+    
+    FOR FORMS (if validation/submission functions exist):
+    - Input fields: st.text_input(), st.number_input(), st.date_input()
+    - Validation feedback: st.error(), st.success()
+    - Submit button with validation logic
+    - Clear/Reset functionality
+    
+    FOR DASHBOARDS (if analytics/visualization functions exist):
+    - Filters: st.sidebar with st.selectbox(), st.multiselect()
+    - Charts: st.line_chart(), st.bar_chart(), or plotly
+    - Metrics: st.metric() for KPIs
+    - Refresh/Update controls
+    
+    GENERAL PRINCIPLES:
+    - Match UI complexity to function complexity
+    - Add mode toggles if functions support multiple formats
+    - Include error handling for invalid inputs
+    - Auto-convert between formats when needed
+    - Disable inappropriate controls per mode/state
 
---- COMPLETE BUTTON GRID EXAMPLE ---
+--- EXAMPLES BY APPLICATION TYPE ---
+
+CALCULATOR EXAMPLE (Button Grid):
 ```python
 import streamlit as st
 from modules.calculator import add, subtract, multiply, divide
@@ -171,4 +187,30 @@ if st.button('Clear', key='C', use_container_width=True):
     st.rerun()
 ```
 
+DATA PROCESSOR EXAMPLE:
+```python
+import streamlit as st
+import pandas as pd
+from modules.processor import transform_data, filter_data
+
+st.title('Data Processor')
+
+uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
+
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.dataframe(df.head())
+    
+    operation = st.selectbox('Operation', ['Transform', 'Filter'])
+    
+    if st.button('Process', key='process'):
+        if operation == 'Transform':
+            result = transform_data(df)
+        else:
+            result = filter_data(df)
+        st.dataframe(result)
+        st.download_button('Download', result.to_csv(), 'result.csv')
+```
+
 Write the complete, runnable `app.py` file following ALL rules above.
+Analyze the available functions and choose the appropriate UI pattern.

@@ -1,0 +1,48 @@
+You are a QA engineer creating comprehensive UI test scenarios.
+
+Analyze the application and generate test scenarios that cover edge cases and user workflows.
+
+--- APPLICATION ARCHITECTURE ---
+{architecture_plan}
+
+--- AVAILABLE FUNCTIONS ---
+{functions_text}
+
+--- YOUR TASK ---
+Generate 10-15 test scenarios that a user would perform with this application.
+Focus on:
+1. Common workflows (happy path)
+2. Edge cases (boundary conditions, invalid inputs)
+3. Mode switching (if applicable)
+4. Data type conversions (if applicable)
+5. Error handling
+6. Feature combinations
+
+OUTPUT FORMAT (JSON):
+{{
+  "app_type": "calculator|data_processor|form|dashboard|etc",
+  "test_scenarios": [
+    {{
+      "id": 1,
+      "name": "Basic addition",
+      "steps": ["Enter 5", "Press +", "Enter 3", "Press ="],
+      "expected": "Display shows 8",
+      "edge_case": false
+    }},
+    {{
+      "id": 2,
+      "name": "Hex mode conversion",
+      "steps": ["Enter A in HEX", "Switch to DEC"],
+      "expected": "Display shows 10",
+      "edge_case": true
+    }}
+  ],
+  "critical_features": ["mode_switching", "arithmetic", "conversions"],
+  "ui_requirements": [
+    "HEX mode needs A-F buttons",
+    "Mode toggle must convert display value",
+    "Operations with decimals should switch to DEC mode"
+  ]
+}}
+
+Be specific and comprehensive. Think like a user trying to break the application.
