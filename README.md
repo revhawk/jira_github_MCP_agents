@@ -2,6 +2,14 @@
 
 AI-powered code generation from Jira tickets using LangGraph, featuring multiple specialized agents for TDD and full-stack application generation.
 
+## 🌐 Web UI Available!
+
+```bash
+streamlit run jira_coder_ui.py
+```
+
+Visual interface with real-time feedback, code viewing, and archive management. See [WEB_UI_GUIDE.md](WEB_UI_GUIDE.md) for details.
+
 ## Features
 
 - **Unified App Generation**: Multiple Jira tickets → One cohesive Streamlit application
@@ -39,29 +47,43 @@ ANTHROPIC_API_KEY=your_anthropic_api_key
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-### 3. Run Code Generation
+### 3. Run Jira Coder
 
+**Option A: Web UI (Recommended)**
+```bash
+streamlit run jira_coder_ui.py
+```
+Then open http://localhost:8501 in your browser.
+
+**Option B: Command Line**
 ```bash
 python main.py
 ```
 
 Choose mode:
-1. **Single ticket** - Standalone app per ticket
-2. **Bulk import** - Standalone apps for all tickets
-3. **Unified app** - One integrated Streamlit app (recommended)
+1. **TDD Workflow** - Standalone module from single ticket
+2. **Full Generation** - Complete app from multiple tickets
+3. **Incremental Update** - Add features without regenerating
+4. **Compare Archives** - View differences between versions
+10-12. **Demos** - Run example calculators
+20+. **Archives** - Run previously generated apps
 
 ## Workflow Architecture
 
-### Agents
-1.  **jira_reader**: Reads Jira tickets based on keys or fetches all from a project.
-2.  **system_architect**: Designs the application architecture based on Jira tickets, inferring the application's goal and defining modules, their purposes, and functions.
-3.  **spec_agent**: Generates detailed implementation specifications for each module, including function signatures, inputs, outputs, edge cases, and acceptance criteria.
-4.  **spec_reviewer**: Reviews the generated specifications for completeness and quality, acting as a quality gate before code generation.
-5.  **generate_tests**: Generates pytest test files for each module based on its spec, covering normal functionality, edge cases, and error handling.
-6.  **generate_code**: Implements the business logic for each module, aiming to satisfy the spec and pass generated tests.
-7.  **validate_modules**: Validates that generated modules contain the functions they claim to have according to their specifications.
-8.  **generate_main_app**: Creates the main Streamlit application file (`app.py`), integrating all generated modules into a cohesive user interface.
-9.  **run_tests**: Executes the generated pytest tests against the generated code.
+**20 Specialized AI Agents** orchestrated by LangGraph. See [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md) for complete details.
+
+### Key Agents
+1.  **jira_reader**: Fetches tickets and EPIC from Jira
+2.  **system_architect**: Designs modules and functions (context-aware)
+3.  **requirements_analyzer**: Validates against EPIC constraints
+4.  **spec_agent**: Generates detailed specifications
+5.  **generate_tests**: Creates pytest test files
+6.  **code_merger** ⭐: Merges new functions without deleting existing code
+7.  **generate_code**: Implements business logic
+8.  **ui_designer**: Chooses optimal UI pattern
+9.  **generate_main_app**: Creates Streamlit UI
+10. **fix_analyzer** + **fixer_agent**: Auto-fixes failing tests
+11. **quality_reviewer** + **senior_dev_reviewer** + **architecture_reviewer**: Final reviews
 
 ## Generated Structure
 
@@ -78,6 +100,12 @@ app.py                   # Main Streamlit application
 
 ## Running Generated Apps
 
+**From Web UI:**
+- Generated apps appear in the Status panel
+- Click "View app.py" to see the code
+- Run demos directly from the UI
+
+**From Command Line:**
 ```bash
 streamlit run app.py
 ```
@@ -96,11 +124,19 @@ python -m tests.test_connections
 python -m pytest generated_tests/ -v
 ```
 
-### Run Streamlit UI Tests
+### View Test Results in Web UI
 
-```bash
-python -m pytest tests/test_streamlit_app.py -v
-```
+1. Launch web UI: `streamlit run jira_coder_ui.py`
+2. Click "📊 View Test Results" in sidebar
+3. See pass/fail counts and details
+
+## Documentation
+
+- [README.md](README.md) - This file (quick start)
+- [WEB_UI_GUIDE.md](WEB_UI_GUIDE.md) - Streamlit UI guide
+- [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md) - Agent structure and details
+- [WORKFLOW_FLOWCHART.md](WORKFLOW_FLOWCHART.md) - Complete workflow diagrams
+- [CHANGELOG.md](CHANGELOG.md) - Version history
 
 ## Reference Examples
 
@@ -153,13 +189,30 @@ python -m tests.test_connections
 - Restart Streamlit server: `Ctrl+C` then `streamlit run app.py`
 - Hard refresh browser: `Ctrl+Shift+R`
 - Check logs in `logs/unified_*.log`
+- View logs in Web UI: Click "View Latest Log" in Status panel
 
 ### Test Failures
 
 Check `logs/unified_*.log` for detailed error messages. The workflow auto-fixes tests up to loop detection limit.
 
+### Web UI Issues
+
+- Ensure port 8501 is available
+- Check `.env` file has all required keys
+- View status panel for file existence checks
+
 ## Examples
 
+### Demo Apps (Modes 10-12)
+- **Mode 10**: Basic calculator (digits + operators)
+- **Mode 11**: Calculator with memory (M+, MR, MC)
+- **Mode 12**: Calculator with binary mode (DEC/BIN toggle)
+
+### Archived Apps (Modes 20+)
+Previously generated apps are auto-discovered and listed.
+Use Mode 4 to compare any two archives.
+
+### Full Example
 See `simple_calculator/` for a complete working example generated from 30 Jira tickets.
 
 ## Contributing

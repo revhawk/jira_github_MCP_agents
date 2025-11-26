@@ -1,11 +1,25 @@
 # Jira Code Generator - Workflow Flowchart
 
+## Access Methods
+
+### Web UI (Recommended)
+```bash
+streamlit run jira_coder_ui.py
+```
+Open http://localhost:8501
+
+### Command Line
+```bash
+python3 main.py
+```
+
 ## Main Menu Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    🔧 JIRA CODER                            │
-│                     python3 main.py                          │
+│          streamlit run jira_coder_ui.py (Web UI)            │
+│                  python3 main.py (CLI)                       │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
