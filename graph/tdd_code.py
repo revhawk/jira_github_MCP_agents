@@ -5,11 +5,11 @@ from pathlib import Path
 from agents.jira_agent import jira_client
 from agents.implementation_agent import write_files
 from agents.tester_agent import run_pytest
-from openai import OpenAI
 from config.settings import Settings
 from utils.logging_utils import setup_logging
 from utils.file_utils import load_prompt, read_text_safe
 from utils.langsmith_stats import display_run_stats
+from utils.llm_helper import call_llm
 import ast
 import logging
 import json
@@ -69,22 +69,17 @@ def run_poc_graph(issue_key: str):
         log_phase("spec_agent")
         title = state.get("title", "")
         description = state.get("description", "")
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         prompt_template = load_prompt("tdd_spec_agent.txt")
         prompt = prompt_template.format(title=title, description=description)
 
-        resp = client.chat.completions.create(
+        spec = call_llm(
+            system_prompt=load_prompt("system_json_only.txt"),
+            user_prompt=prompt,
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": load_prompt("system_json_only.txt")},
-                {"role": "user", "content": prompt}
-            ],
             temperature=0.2,
-            top_p=0.95,
-            max_tokens=1500,
+            max_tokens=1500
         )
-        spec = resp.choices[0].message.content
         try: # noqa: SIM105
             json.loads(spec or "{}")
         except json.JSONDecodeError:
@@ -99,20 +94,16 @@ def run_poc_graph(issue_key: str):
         title = state.get("title", "")
         description = state.get("description", "")
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
-        
         prompt_template = load_prompt("tdd_spec_reviewer.txt")
         review_prompt = prompt_template.format(title=title, description=description, spec=spec)
         
-        resp = client.chat.completions.create(
+        review = call_llm(
+            system_prompt="You are a senior QA engineer reviewing specifications.",
+            user_prompt=review_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": review_prompt}],
             temperature=0.1,
-            top_p=0.95,
-            max_tokens=800,
+            max_tokens=800
         )
-        
-        review = resp.choices[0].message.content
         logger.info(f"Spec review:\n{review}")
         
         return {"spec_review": review or ""}
@@ -128,8 +119,6 @@ def run_poc_graph(issue_key: str):
         os.makedirs(output_dir, exist_ok=True)
         test_path = os.path.join(output_dir, f"test_{key}.py")
 
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
-        
         # Generate tests
         prompt_template = load_prompt("unified_generate_tests.txt")
         test_prompt = prompt_template.format(
@@ -139,17 +128,13 @@ def run_poc_graph(issue_key: str):
             spec=spec
         )
 
-        test_resp = client.chat.completions.create(
+        tests_src = call_llm(
+            system_prompt=load_prompt("system_python_test_code_only.txt"),
+            user_prompt=test_prompt,
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": load_prompt("system_python_test_code_only.txt")},
-                {"role": "user", "content": test_prompt},
-            ],
-            max_tokens=3000,
             temperature=0.3,
-            top_p=0.9,
+            max_tokens=3000
         )
-        tests_src = (test_resp.choices[0].message.content or "").strip()
         
         # Clean markdown
         tests_src = re.sub(r'^```python\s*', '', tests_src)
@@ -206,8 +191,6 @@ def run_poc_graph(issue_key: str):
         # Read validated tests
         tests_src = read_text_safe(test_path or "")
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
-        
         # Generate implementation based on validated tests
         prompt_template = load_prompt("unified_generate_code.txt")
         code_prompt = prompt_template.format(
@@ -218,17 +201,13 @@ def run_poc_graph(issue_key: str):
             tests_src=tests_src
         )
 
-        code_resp = client.chat.completions.create(
+        code_src = call_llm(
+            system_prompt=load_prompt("system_python_code_only.txt"),
+            user_prompt=code_prompt,
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": load_prompt("system_python_code_only.txt")},
-                {"role": "user", "content": code_prompt},
-            ],
-            max_tokens=3000,
             temperature=0.3,
-            top_p=0.9,
+            max_tokens=3000
         )
-        code_src = (code_resp.choices[0].message.content or "").strip()
         
         # Clean markdown
         code_src = re.sub(r'^```python\s*', '', code_src)
@@ -282,7 +261,6 @@ def run_poc_graph(issue_key: str):
         current_tests = read_text_safe(test_path)
         current_code = read_text_safe(code_path)
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         spec = state.get("spec", "")
         pytest_out = state.get("test_output", "")
         
@@ -294,15 +272,13 @@ def run_poc_graph(issue_key: str):
             current_code=current_code
         )
         
-        resp = client.chat.completions.create(
+        recommendations = call_llm(
+            system_prompt="You are a debugging expert analyzing test failures.",
+            user_prompt=fix_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": fix_prompt}],
             temperature=0.2,
-            top_p=0.95,
-            max_tokens=1000,
+            max_tokens=1000
         )
-        
-        recommendations = resp.choices[0].message.content
         logger.info(f"Fix recommendations:\n{recommendations}")
         
         # Determine fix target
@@ -330,7 +306,6 @@ def run_poc_graph(issue_key: str):
         current_tests = read_text_safe(test_path)
         current_code = read_text_safe(code_path)
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         title = state.get("title", "")
         spec = state.get("spec", "")
         pytest_out = state.get("test_output", "")
@@ -342,15 +317,13 @@ def run_poc_graph(issue_key: str):
         prompt_template = load_prompt("unified_quality_reviewer.txt")
         review_prompt = prompt_template.format(spec=spec, passed=passed, failed=failed, collected=collected, pytest_out=pytest_out, current_tests=current_tests, current_code=current_code)
         
-        resp = client.chat.completions.create(
+        review_report = call_llm(
+            system_prompt="You are a quality assurance expert reviewing code and tests.",
+            user_prompt=review_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": review_prompt}],
             temperature=0.2,
-            top_p=0.95,
-            max_tokens=1500,
+            max_tokens=1500
         )
-        
-        review_report = resp.choices[0].message.content
         
         # Extract issues
         test_issues = []
@@ -377,7 +350,6 @@ def run_poc_graph(issue_key: str):
         current_tests = read_text_safe(test_path)
         current_code = read_text_safe(code_path)
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         spec = state.get("spec", "")
         
         prompt_template = load_prompt("unified_senior_dev_reviewer.txt")
@@ -387,15 +359,13 @@ def run_poc_graph(issue_key: str):
             current_code=current_code
         )
         
-        resp = client.chat.completions.create(
+        review = call_llm(
+            system_prompt="You are a senior developer reviewing code for production readiness.",
+            user_prompt=senior_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": senior_prompt}],
             temperature=0.1,
-            top_p=0.95,
-            max_tokens=800,
+            max_tokens=800
         )
-        
-        review = resp.choices[0].message.content
         logger.info(f"Senior dev review:\n{review}")
         
         will_run = "WILL_RUN: YES" in review
@@ -418,7 +388,6 @@ def run_poc_graph(issue_key: str):
         code_path = state.get("code_path")
         current_code = read_text_safe(code_path)
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         spec = state.get("spec", "")
         title = state.get("title", "")
         
@@ -429,15 +398,13 @@ def run_poc_graph(issue_key: str):
             current_code=current_code
         )
         
-        resp = client.chat.completions.create(
+        review = call_llm(
+            system_prompt="You are a software architect reviewing code structure and design.",
+            user_prompt=arch_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": arch_prompt}],
             temperature=0.1,
-            top_p=0.95,
-            max_tokens=800,
+            max_tokens=800
         )
-        
-        review = resp.choices[0].message.content
         logger.info(f"Architecture review:\n{review}")
         
         return {"architecture_review": review}
@@ -459,9 +426,6 @@ def run_poc_graph(issue_key: str):
         current_code = state.get("current_code", "")
         
         current_tests = read_text_safe(test_path) or current_tests
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
-
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         # Fix tests if needed
         if fix_type in ["TESTS", "BOTH"]:
@@ -472,14 +436,13 @@ def run_poc_graph(issue_key: str):
                 fix_recommendations=fix_recommendations,
                 current_tests=current_tests
             )
-            test_resp = client.chat.completions.create(
+            tests_src = call_llm(
+                system_prompt="You are a test fixing expert. Output only valid Python code, no markdown.",
+                user_prompt=test_fix_prompt,
                 model="gpt-4o-mini",
-                messages=[{"role": "user", "content": test_fix_prompt}],
                 temperature=0.2,
-                top_p=0.95,
-                max_tokens=3000,
+                max_tokens=3000
             )
-            tests_src = (test_resp.choices[0].message.content or "").strip()
             tests_src = re.sub(r'^```python\s*', '', tests_src)
             tests_src = re.sub(r'```\s*$', '', tests_src)
         else:
@@ -494,14 +457,13 @@ def run_poc_graph(issue_key: str):
                 current_code=current_code,
                 current_tests=tests_src # Use the potentially fixed tests
             )
-            code_resp = client.chat.completions.create(
+            code_src = call_llm(
+                system_prompt="You are a code fixing expert. Output only valid Python code, no markdown.",
+                user_prompt=code_fix_prompt,
                 model="gpt-4o-mini",
-                messages=[{"role": "user", "content": code_fix_prompt}],
                 temperature=0.2,
-                top_p=0.95,
-                max_tokens=3000,
+                max_tokens=3000
             )
-            code_src = code_resp.choices[0].message.content.strip()
             code_src = re.sub(r'^```python\s*', '', code_src)
             code_src = re.sub(r'```\s*$', '', code_src)
         else:

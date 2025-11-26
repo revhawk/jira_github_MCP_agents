@@ -11,11 +11,11 @@ from pathlib import Path
 from agents.jira_agent import jira_client
 from agents.implementation_agent import write_files
 from agents.tester_agent import run_pytest
-from openai import OpenAI
 from config.settings import Settings
 from utils.logging_utils import setup_logging
 from utils.file_utils import load_prompt, read_text_safe
 from utils.langsmith_stats import display_run_stats
+from utils.llm_helper import call_llm
 import ast
 import logging
 import json
@@ -115,6 +115,7 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         
         # Check OpenAI connection
         try: # noqa: SIM105
+            from openai import OpenAI
             client = OpenAI(api_key=Settings.OPENAI_API_KEY)
             client.models.list()
             logger.info("✅ OpenAI connection successful.")
@@ -148,7 +149,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         epic_description = state.get("epic_description", "")
         arch_iteration = state.get("arch_iteration", 0)
         rejection_reason = state.get("rejection_reason", "")
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         if not tickets:
             logger.error("No tickets loaded. Cannot design architecture.")
@@ -164,14 +164,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         else:
             prompt_template = load_prompt("unified_app_goal.txt")
             app_goal_prompt = prompt_template.format(tickets_summary=tickets_summary)
-            goal_resp = client.chat.completions.create(
+            app_goal = call_llm(
+                system_prompt="You are an application architect inferring goals from requirements.",
+                user_prompt=app_goal_prompt,
                 model="gpt-4o-mini",
-                messages=[{"role": "user", "content": app_goal_prompt}],
                 temperature=0.2,
-                top_p=0.95,
-                max_tokens=1000,
+                max_tokens=1000
             )
-            app_goal = (goal_resp.choices[0].message.content or "").strip()
 
         # Add feedback from previous rejection
         if arch_iteration > 0 and rejection_reason:
@@ -190,18 +189,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             ticket_details=ticket_details
         )
         
-        resp = client.chat.completions.create(
+        arch_plan = call_llm(
+            system_prompt=load_prompt("system_json_only.txt"),
+            user_prompt=prompt,
             model="gpt-4o",
-            messages=[
-                {"role": "system", "content": load_prompt("system_json_only.txt")},
-                {"role": "user", "content": prompt}
-            ],
             temperature=0.2,
-            top_p=0.95,
-            max_tokens=2000,
+            max_tokens=2000
         )
-        
-        arch_plan = (resp.choices[0].message.content or "").strip()
         # Clean markdown from the response before parsing
         arch_plan = re.sub(r'^```json\s*', '', arch_plan)
         arch_plan = re.sub(r'```\s*$', '', arch_plan)
@@ -232,7 +226,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         epic_description = state.get("epic_description", "")
         architecture_plan = state.get("architecture_plan", "")
         arch_iteration = state.get("arch_iteration", 0)
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         # Skip if modules already exist (incremental update mode)
         module_dir = "modules"
@@ -262,10 +255,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             f"PROPOSED ARCHITECTURE:\n{architecture_plan}\n"
         )
         
-        resp = client.chat.completions.create(
-            model="gpt-4o", messages=[{"role": "user", "content": prompt}], max_tokens=500)
-        
-        analysis = resp.choices[0].message.content or ""
+        analysis = call_llm(
+            system_prompt="You are a requirements analyst ensuring architecture matches EPIC requirements.",
+            user_prompt=prompt,
+            model="gpt-4o",
+            temperature=0.2,
+            max_tokens=500
+        )
         logger.info(f"Requirements analysis:\n{analysis}")
         
         approved = 'APPROVED: YES' in analysis.upper()
@@ -286,8 +282,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         _log_phase("spec_agent")
         tickets = state.get("tickets", [])
         modules = state.get("modules", {})
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
-        
         specs = {}
         for module_name, module_info in modules.items():
             module_tickets = [t for t in tickets if t["key"] in module_info["tickets"]]
@@ -301,18 +295,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
                 tickets_text=tickets_text
             )
             
-            resp = client.chat.completions.create(
+            spec = call_llm(
+                system_prompt=load_prompt("system_json_only.txt"),
+                user_prompt=prompt,
                 model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": load_prompt("system_json_only.txt")},
-                    {"role": "user", "content": prompt}
-                ],
                 temperature=0.2,
-                top_p=0.95,
-                max_tokens=1500,
+                max_tokens=1500
             )
-            
-            spec = (resp.choices[0].message.content or "").strip()
             try: # noqa: SIM105
                 json.loads(spec)
             except json.JSONDecodeError:
@@ -330,21 +319,18 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         """
         _log_phase("spec_reviewer")
         specs = state.get("specs", {})
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         for module_name, spec in specs.items():
             prompt_template = load_prompt("unified_spec_reviewer.txt")
             prompt = prompt_template.format(module_name=module_name, spec=spec)
 
-            resp = client.chat.completions.create(
+            review = call_llm(
+                system_prompt="You are a senior QA engineer reviewing specifications.",
+                user_prompt=prompt,
                 model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                top_p=0.95,
-                max_tokens=500,
+                max_tokens=500
             )
-            
-            review = resp.choices[0].message.content
             logger.info(f"Spec review for {module_name}:\n{review}")
         
         return {}
@@ -356,7 +342,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         """
         _log_phase("generate_tests")
         specs = state.get("specs", {})
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         test_files = {}
         test_dir = "generated_tests"
@@ -368,18 +353,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             prompt_template = load_prompt("unified_generate_tests.txt")
             prompt = prompt_template.format(module_name=module_name, spec=spec)
             
-            resp = client.chat.completions.create(
+            tests_src = call_llm(
+                system_prompt=load_prompt("system_python_test_code_only.txt"),
+                user_prompt=prompt,
                 model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": load_prompt("system_python_test_code_only.txt")},
-                    {"role": "user", "content": prompt}
-                ],
                 temperature=0.1,
-                top_p=0.95,
-                max_tokens=3000,
+                max_tokens=3000
             )
-            
-            tests_src = (resp.choices[0].message.content or "").strip()
             tests_src = re.sub(r'^```python\s*', '', tests_src)
             tests_src = re.sub(r'```\s*$', '', tests_src)
             
@@ -405,7 +385,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         """
         _log_phase("code_merger")
         specs = state.get("specs", {})
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         module_dir = "modules"
         os.makedirs(module_dir, exist_ok=True)
@@ -452,17 +431,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
                         new_functions_spec=filtered_spec
                     )
                     
-                    resp = client.chat.completions.create(
+                    merged_code = call_llm(
+                        system_prompt=load_prompt("system_python_code_only.txt"),
+                        user_prompt=prompt,
                         model="gpt-4o",
-                        messages=[
-                            {"role": "system", "content": load_prompt("system_python_code_only.txt")},
-                            {"role": "user", "content": prompt}
-                        ],
                         temperature=0.1,
-                        max_tokens=3000,
+                        max_tokens=3000
                     )
-                    
-                    merged_code = (resp.choices[0].message.content or "").strip()
                     merged_code = re.sub(r'^```python\s*', '', merged_code)
                     merged_code = re.sub(r'```\s*$', '', merged_code)
                     
@@ -495,7 +470,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         _log_phase("generate_code")
         specs = state.get("specs", {})
         test_files = state.get("test_files", {})
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         module_dir = "modules"
         os.makedirs(module_dir, exist_ok=True)
@@ -521,18 +495,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             prompt_template = load_prompt("unified_generate_code.txt")
             prompt = prompt_template.format(spec=spec, tests_src=tests_src)
 
-            resp = client.chat.completions.create(
+            code_src = call_llm(
+                system_prompt=load_prompt("system_python_code_only.txt"),
+                user_prompt=prompt,
                 model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": load_prompt("system_python_code_only.txt")},
-                    {"role": "user", "content": prompt}
-                ],
                 temperature=0.1,
-                top_p=0.95,
-                max_tokens=3000,
+                max_tokens=3000
             )
-            
-            code_src = (resp.choices[0].message.content or "").strip()
             code_src = re.sub(r'^```python\s*', '', code_src)
             code_src = re.sub(r'```\s*$', '', code_src)
             
@@ -592,7 +561,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         modules = state.get("modules", {})
         specs = state.get("specs", {})
         code_files = state.get("code_files", {})
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         # Read actual module code to get real function names
         actual_functions = {}
@@ -662,18 +630,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             + pattern_guidance
         )
         
-        resp = client.chat.completions.create(
+        app_src = call_llm(
+            system_prompt=load_prompt("system_python_code_only.txt"),
+            user_prompt=prompt,
             model="gpt-4o",
-            messages=[
-                {"role": "system", "content": load_prompt("system_python_code_only.txt")},
-                {"role": "user", "content": prompt}
-            ],
             temperature=0.1,
-            top_p=0.95,
-            max_tokens=4000,
+            max_tokens=4000
         )
-        
-        app_src = (resp.choices[0].message.content or "").strip()
         app_src = re.sub(r'^```python\s*', '', app_src)
         app_src = re.sub(r'```\s*$', '', app_src)
         
@@ -695,7 +658,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         _log_phase("ui_designer")
         code_files = state.get("code_files", {})
         epic_description = state.get("epic_description", "")
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         # Read actual functions
         actual_functions = {}
@@ -721,10 +683,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             f"AVAILABLE FUNCTIONS:\n{functions_list}\n"
         )
         
-        resp = client.chat.completions.create(
-            model="gpt-4o", messages=[{"role": "user", "content": prompt}], max_tokens=300)
-        
-        ui_design = resp.choices[0].message.content
+        ui_design = call_llm(
+            system_prompt="You are a UI/UX designer choosing optimal Streamlit layouts.",
+            user_prompt=prompt,
+            model="gpt-4o",
+            temperature=0.2,
+            max_tokens=300
+        )
         logger.info(f"UI design:\n{ui_design}")
         
         # Extract UI pattern
@@ -809,7 +774,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         
         all_recommendations = []
         fix_targets = set()
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
 
         for module_name, res in test_results.items():
             if res.get("failed", 0) > 0 or res.get("collected", 0) == 0:
@@ -830,10 +794,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
                     current_tests=current_tests,
                     current_code=current_code
                 )
-                resp = client.chat.completions.create(
-                    model="gpt-4o", messages=[{"role": "user", "content": fix_prompt}], temperature=0.2, top_p=0.95, max_tokens=1000)
-                
-                recommendations = resp.choices[0].message.content
+                recommendations = call_llm(
+                    system_prompt="You are a debugging expert analyzing test failures.",
+                    user_prompt=fix_prompt,
+                    model="gpt-4o",
+                    temperature=0.2,
+                    max_tokens=1000
+                )
                 logger.info(f"Fix recommendations for {module_name}:\n{recommendations}")
                 all_recommendations.append(f"--- FIX FOR MODULE: {module_name} ---\n{recommendations}")
                 
@@ -857,7 +824,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         _log_phase("fixer_agent")
         
         fix_recommendations = state.get("fix_recommendations", "")
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         # Split recommendations by module
         module_fixes = re.split(r"--- FIX FOR MODULE: ", fix_recommendations)
@@ -885,10 +851,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
                 test_path=test_path,
                 current_tests=current_tests
             )
-            resp = client.chat.completions.create(
-                model="gpt-4o", messages=[{"role": "user", "content": fix_prompt}], temperature=0.2, top_p=0.95, max_tokens=4000)
-            
-            fixed_content = resp.choices[0].message.content
+            fixed_content = call_llm(
+                system_prompt="You are a code fixing expert. Output fixed code in the specified format.",
+                user_prompt=fix_prompt,
+                model="gpt-4o",
+                temperature=0.2,
+                max_tokens=4000
+            )
             
             # Extract and write fixed files
             file_blocks = re.findall(r"--- START FILE: (.*?) ---\n(.*?)\n--- END FILE: \1 ---", fixed_content or "", re.DOTALL)
@@ -992,7 +961,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         app_errors = state.get("app_errors", [])
         app_path = state.get("app_path", "app.py")
         iteration = state.get("app_fix_iteration", 0)
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         
         print(f"🔧 Fixing app (iteration {iteration + 1}/2)")
         
@@ -1027,10 +995,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             "OUTPUT: Only the fixed Python code, no markdown."
         )
         
-        resp = client.chat.completions.create(
-            model="gpt-4o", messages=[{"role": "user", "content": prompt}], temperature=0.2, max_tokens=4000)
-        
-        fixed_app = (resp.choices[0].message.content or "").strip()
+        fixed_app = call_llm(
+            system_prompt="You are a Streamlit expert fixing app errors. Output only valid Python code, no markdown.",
+            user_prompt=prompt,
+            model="gpt-4o",
+            temperature=0.2,
+            max_tokens=4000
+        )
         fixed_app = re.sub(r'^```python\s*', '', fixed_app)
         fixed_app = re.sub(r'```\s*$', '', fixed_app)
         
@@ -1041,7 +1012,6 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         """Review test and code quality across all modules."""
         _log_phase("quality_reviewer")
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
         specs = state.get("specs", {})
         passed = state.get("passed", 0)
         failed = state.get("failed", 0)
@@ -1055,15 +1025,13 @@ def run_unified_graph(project_key: str, ticket_keys: list):
             specs_text=specs_text,
         )
         
-        resp = client.chat.completions.create(
+        review_report = call_llm(
+            system_prompt="You are a quality assurance expert reviewing code and tests.",
+            user_prompt=review_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": review_prompt}],
             temperature=0.2,
-            top_p=0.95,
-            max_tokens=1500,
+            max_tokens=1500
         )
-        
-        review_report = resp.choices[0].message.content
         logger.info(f"Quality Review Report:\n{review_report}")
         
         return {"review_report": review_report or ""}
@@ -1076,23 +1044,19 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         app_code = read_text_safe(app_path or "")
         architecture_plan = state.get("architecture_plan", "")
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
-        
         prompt_template = load_prompt("unified_senior_dev_reviewer.txt")
         senior_prompt = prompt_template.format(
             architecture_plan=architecture_plan,
             app_code=app_code
         )
         
-        resp = client.chat.completions.create(
+        review = call_llm(
+            system_prompt="You are a senior developer reviewing code for production readiness.",
+            user_prompt=senior_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": senior_prompt}],
             temperature=0.1,
-            top_p=0.95,
-            max_tokens=1000,
+            max_tokens=1000
         )
-        
-        review = resp.choices[0].message.content
         logger.info(f"Senior Dev Review:\n{review}")
         
         return {"senior_dev_review": review or ""}
@@ -1105,23 +1069,19 @@ def run_unified_graph(project_key: str, ticket_keys: list):
         app_code = read_text_safe(app_path or "")
         architecture_plan = state.get("architecture_plan", "")
         
-        client = OpenAI(api_key=Settings.OPENAI_API_KEY)
-        
         prompt_template = load_prompt("unified_architecture_reviewer.txt")
         arch_prompt = prompt_template.format(
             architecture_plan=architecture_plan,
             app_code=app_code
         )
         
-        resp = client.chat.completions.create(
+        review = call_llm(
+            system_prompt="You are a software architect reviewing code structure and design.",
+            user_prompt=arch_prompt,
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": arch_prompt}],
             temperature=0.1,
-            top_p=0.95,
-            max_tokens=1000,
+            max_tokens=1000
         )
-        
-        review = resp.choices[0].message.content
         logger.info(f"Architecture Review:\n{review}")
         
         return {"architecture_review": review or ""}
